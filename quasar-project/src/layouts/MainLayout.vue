@@ -102,7 +102,6 @@ const linksList =
     caption: 'Informacije o nama',
     icon: 'info',
     link: '/o_nama'
-
   }
 ]
 

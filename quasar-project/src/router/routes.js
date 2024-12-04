@@ -5,7 +5,7 @@ const routes = [
     children: [
       { path: '', component: () => import('pages/IndexPage.vue') },
       { path: 'popisvjezbi', component: () => import('pages/PopisVjezbi.vue') }, // Popis Trenera
-      { path: 'trazitrenera', component: () => import('pages/TraziTrenera.vue') }, // Pretraživanje
+      { path: 'trazitrenera', component: () => import('pages/PopisTreneraPage.vue') }, // Pretraživanje
       { path: 'o_nama', component: () => import('pages/ONama.vue') }, // O nama
       { path: 'lokacija', component: () => import('src/pages/LokacijaPage.vue') }, // Lokacija
       { path: 'loginpage', component: () => import('src/pages/LoginPage.vue') }, // Login
@@ -13,11 +13,8 @@ const routes = [
       
     ]
   },
-
-  // Always leave this as last one,
-  // but you can also remove it
   {
-    path: '/:catchAll(.*)*',
+    path: '/:catchAll(.)',
     component: () => import('pages/ErrorNotFound.vue')
     
   }
