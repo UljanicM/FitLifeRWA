@@ -10,12 +10,10 @@
           aria-label="Menu"
           @click="toggleLeftDrawer"
         />
-
-        <q-toolbar-title>
-          Quasar App
+        <q-toolbar-title class="text-h2">
+          Fitlife
         </q-toolbar-title>
-
-        <div>Quasar v{{ $q.version }}</div>
+        <div>Dobrodošli</div>
       </q-toolbar>
     </q-header>
 
@@ -25,17 +23,27 @@
       bordered
     >
       <q-list>
-        <q-item-label
-          header
-        >
-          Essential Links
+        <q-item-label header>
+          Glavni linkovi
         </q-item-label>
 
-        <EssentialLink
+        <!-- Zamjena q-item s router-link -->
+        <router-link
           v-for="link in linksList"
           :key="link.title"
-          v-bind="link"
-        />
+          :to="link.link"
+          class="cursor-pointer"
+        >
+          <q-item>
+            <q-item-section avatar>
+              <q-icon :name="link.icon" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ link.title }}</q-item-label>
+              <q-item-label caption>{{ link.caption }}</q-item-label>
+            </q-item-section>
+          </q-item>
+        </router-link>
       </q-list>
     </q-drawer>
 
@@ -47,60 +55,64 @@
 
 <script setup>
 import { ref } from 'vue'
-import EssentialLink from 'components/EssentialLink.vue'
+import { useRouter } from 'vue-router'
 
-defineOptions({
-  name: 'MainLayout'
-})
+const router = useRouter()
+const leftDrawerOpen = ref(false)
+const linksList = 
+[
+  {
+    title: 'Naslovnica',
+    caption: 'Početna stranica',
+    icon: 'home',
+    link: '/'
+  },
+  {
+    title: 'Popis Vježbi',
+    caption: 'Popis svih dostupnih vježbi',
+    icon: 'fitness_center',
+    link: '/popisvjezbi'
+  },
+  {
+    title: 'Trazi trenera',
+    caption: 'Pretražujte Trenere',
+    icon: 'search',
+    link: '/trazitrenera'
+  },
+  {
+    title: 'Lokacija',
+    caption: 'Gdje se nalazimo',
+    icon: 'place',
+    link: '/lokacija'
+  },
+  {
+    title: 'Login',
+    caption: 'Prijava',
+    icon: 'login',
+    link: '/loginpage'
+  },
+  {
+    title: 'Registracija',
+    caption: 'Registrirajte se',
+    icon: 'person_add',
+    link: '/registracijapage'
+  },
+  {
+    title: 'O nama',
+    caption: 'Informacije o nama',
+    icon: 'info',
+    link: '/o_nama'
 
-const linksList = [
-  {
-    title: 'Docs',
-    caption: 'quasar.dev',
-    icon: 'school',
-    link: 'https://quasar.dev'
-  },
-  {
-    title: 'Github',
-    caption: 'github.com/quasarframework',
-    icon: 'code',
-    link: 'https://github.com/quasarframework'
-  },
-  {
-    title: 'Discord Chat Channel',
-    caption: 'chat.quasar.dev',
-    icon: 'chat',
-    link: 'https://chat.quasar.dev'
-  },
-  {
-    title: 'Forum',
-    caption: 'forum.quasar.dev',
-    icon: 'record_voice_over',
-    link: 'https://forum.quasar.dev'
-  },
-  {
-    title: 'Twitter',
-    caption: '@quasarframework',
-    icon: 'rss_feed',
-    link: 'https://twitter.quasar.dev'
-  },
-  {
-    title: 'Facebook',
-    caption: '@QuasarFramework',
-    icon: 'public',
-    link: 'https://facebook.quasar.dev'
-  },
-  {
-    title: 'Quasar Awesome',
-    caption: 'Community Quasar projects',
-    icon: 'favorite',
-    link: 'https://awesome.quasar.dev'
   }
 ]
 
-const leftDrawerOpen = ref(false)
-
-function toggleLeftDrawer () {
+function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
 }
 </script>
+
+<style scoped>
+.cursor-pointer {
+  cursor: pointer; /* Promijenite pokazivač kada se miša pomakne iznad linkova */
+}
+</style>
