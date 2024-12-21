@@ -1,6 +1,6 @@
 <template>
   <q-layout view="lHh Lpr lFf">
-    <q-header elevated>
+    <q-header elevated class="bg-white text-red">
       <q-toolbar>
         <q-btn
           flat
@@ -10,10 +10,9 @@
           aria-label="Menu"
           @click="toggleLeftDrawer"
         />
-        <q-toolbar-title class="text-h2">
+        <q-toolbar-title class="text-h2 text-center">
           Fitlife
         </q-toolbar-title>
-        <div>Dobrodošli</div>
       </q-toolbar>
     </q-header>
 
@@ -21,29 +20,34 @@
       v-model="leftDrawerOpen"
       show-if-above
       bordered
+      class="bg-red text-white"
+      @show="animateLinks"
     >
       <q-list>
-        <q-item-label header>
+        <q-item-label header class="text-center text-white q-pt-md">
           Glavni linkovi
         </q-item-label>
 
-        <!-- Zamjena q-item s router-link -->
-        <router-link
-          v-for="link in linksList"
-          :key="link.title"
-          :to="link.link"
-          class="cursor-pointer"
-        >
-          <q-item>
-            <q-item-section avatar>
-              <q-icon :name="link.icon" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>{{ link.title }}</q-item-label>
-              <q-item-label caption>{{ link.caption }}</q-item-label>
-            </q-item-section>
+        <div>
+          <q-item
+            class="text-center"  v-for="link in linksList"
+            :key="link.title"
+          >
+            <router-link
+              :to="link.link"
+              class="cursor-pointer text-white no-decoration"
+            >
+              <q-item-section avatar>
+                <q-icon :name="link.icon" class="text-white text-center" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="text-white text-center">{{ link.title }}</q-item-label>
+                <q-item-label caption class="text-white text-center">{{ link.caption }}</q-item-label>
+              </q-item-section>
+            </router-link>
           </q-item>
-        </router-link>
+
+        </div>
       </q-list>
     </q-drawer>
 
@@ -55,63 +59,67 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 
-const router = useRouter()
 const leftDrawerOpen = ref(false)
-const linksList = 
-[
+const linksList = ref([
   {
     title: 'Naslovnica',
-    caption: 'Početna stranica',
     icon: 'home',
-    link: '/'
+    link: '/',
+    visible: true // All links set to visible
   },
   {
     title: 'Popis Vježbi',
-    caption: 'Popis svih dostupnih vježbi',
     icon: 'fitness_center',
-    link: '/popisvjezbi'
+    link: '/popisvjezbi',
+    visible: true
   },
   {
     title: 'Trazi trenera',
-    caption: 'Pretražujte Trenere',
     icon: 'search',
-    link: '/trazitrenera'
+    link: '/trazitrenera',
+    visible: true
   },
   {
     title: 'Lokacija',
-    caption: 'Gdje se nalazimo',
     icon: 'place',
-    link: '/lokacija'
+    link: '/lokacija',
+    visible: true
   },
   {
     title: 'Login',
-    caption: 'Prijava',
     icon: 'login',
-    link: '/loginpage'
+    link: '/loginpage',
+    visible: true
   },
   {
     title: 'Registracija',
-    caption: 'Registrirajte se',
     icon: 'person_add',
-    link: '/registracijapage'
+    link: '/registracija',
+    visible: true
   },
   {
     title: 'O nama',
-    caption: 'Informacije o nama',
     icon: 'info',
-    link: '/o_nama'
+    link: '/o_nama',
+    visible: true
   }
-]
+])
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
 }
+
+// Removed the animateLinks function as it's no longer needed
+
 </script>
 
 <style scoped>
 .cursor-pointer {
   cursor: pointer; /* Promijenite pokazivač kada se miša pomakne iznad linkova */
 }
+.no-decoration {
+  text-decoration: none; /* Uklanja podvlačenje teksta u linkovima */
+}
+
 </style>

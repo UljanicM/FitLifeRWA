@@ -4,12 +4,14 @@ const routes = [
     component: () => import('layouts/MainLayout.vue'),
     children: [
       { path: '', component: () => import('pages/IndexPage.vue') },
-      { path: 'popisvjezbi', component: () => import('pages/PopisVjezbi.vue') }, // Popis Trenera
+      { path: 'popisvjezbi', component: () => import('pages/PopisVjezbiPage.vue') }, // Popis Trenera
       { path: 'trazitrenera', component: () => import('pages/PopisTreneraPage.vue') }, // Pretraživanje
-      { path: 'o_nama', component: () => import('pages/ONama.vue') }, // O nama
+      { path: 'o_nama', component: () => import('pages/ONamaPage.vue') }, // O nama
       { path: 'lokacija', component: () => import('src/pages/LokacijaPage.vue') }, // Lokacija
       { path: 'loginpage', component: () => import('src/pages/LoginPage.vue') }, // Login
-      { path: 'registracijapage', component: () => import('src/pages/RegistracijaPage.vue') } // Registracija
+      { path: 'registracija', component: () => import('src/pages/RegistracijaPage.vue') }, // Registracija
+      { path: 'trazitrenera', component: () => import('src/pages/TraziTreneraPage.vue') }, // Registracija
+
       
     ]
   },
