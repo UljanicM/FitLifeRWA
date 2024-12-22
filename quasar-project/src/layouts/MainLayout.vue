@@ -11,7 +11,7 @@
           @click="toggleLeftDrawer"
         />
         <q-toolbar-title class="text-h2 text-center">
-          Fitlife
+          FitLife
         </q-toolbar-title>
       </q-toolbar>
     </q-header>
