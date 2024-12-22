@@ -1,4 +1,3 @@
-
 <template>
   <q-page padding>
     <!-- Registracija Form -->
@@ -8,17 +7,8 @@
 
         <!-- Ime -->
         <q-input
-          v-model="firstName"
+          v-model="name"
           label="Ime"
-          filled
-          class="q-mb-md"
-          :dense="true"
-        />
-
-        <!-- Prezime -->
-        <q-input
-          v-model="lastName"
-          label="Prezime"
           filled
           class="q-mb-md"
           :dense="true"
@@ -33,20 +23,19 @@
           :dense="true"
         />
 
-        <!-- Lozinka -->
+        <!-- Email -->
         <q-input
-          v-model="password"
-          label="Lozinka"
-          type="password"
+          v-model="email"
+          label="Email"
           filled
           class="q-mb-md"
           :dense="true"
         />
 
-        <!-- Potvrda lozinke -->
+        <!-- Lozinka -->
         <q-input
-          v-model="confirmPassword"
-          label="Potvrdi lozinku"
+          v-model="password"
+          label="Lozinka"
           type="password"
           filled
           class="q-mb-md"
@@ -77,60 +66,58 @@
 </template>
 
 <script>
+import axios from "axios";
 import { ref } from "vue";
 
 export default {
   name: "RegistracijaPage",
   setup() {
-    // Reaktivni objekti za unos korisničkih podataka
-    const firstName = ref("");
-    const lastName = ref("");
+    const name = ref("");
     const username = ref("");
+    const email = ref("");
     const password = ref("");
-    const confirmPassword = ref("");
-
-    // Poruke o grešci i uspjehu
     const errorMessage = ref("");
     const successMessage = ref("");
 
-    // Funkcija za registraciju korisnika
-    const registerUser = () => {
-      // Resetiranje poruka
+    const registerUser = async () => {
       errorMessage.value = "";
       successMessage.value = "";
 
-      // Provjera da li su uneseni svi podaci
-      if (!firstName.value || !lastName.value || !username.value || !password.value || !confirmPassword.value) {
-        errorMessage.value = "Molimo unesite ime, prezime, korisničko ime, lozinku i potvrdu lozinke.";
+      // Provjera da li su svi podaci uneseni
+      if (!name.value || !username.value || !email.value || !password.value) {
+        errorMessage.value = "Svi podaci su obavezni.";
         return;
       }
 
-      // Provjera da li se lozinka i potvrda lozinke poklapaju
-      if (password.value !== confirmPassword.value) {
-        errorMessage.value = "Lozinke nisu iste.";
-        return;
+      try {
+        const userData = {
+          name: name.value,
+          username: username.value,
+          email: email.value,
+          password: password.value
+        };
+
+        // Slanje podataka na backend (novi API endpoint)
+        const response = await axios.post("http://localhost:3000/api/registracija", userData);
+        console.log("Korisnik registriran:", response.data);
+
+        successMessage.value = "Registracija uspješna! Sada se možete prijaviti.";
+        // Resetiranje unosa
+        name.value = "";
+        username.value = "";
+        email.value = "";
+        password.value = "";
+      } catch (error) {
+        console.error("Greška pri registraciji:", error);
+        errorMessage.value = "Došlo je do greške pri registraciji.";
       }
-
-      // Simulacija registracije korisnika (u stvarnom slučaju, trebate poslati podatke na backend)
-      console.log("Korisnik registriran:", { firstName: firstName.value, lastName: lastName.value, username: username.value, password: password.value });
-
-      // Ako registracija bude uspješna, postavljanje uspješne poruke
-      successMessage.value = "Registracija uspješna! Sada se možete prijaviti.";
-
-      // Resetiranje unosa
-      firstName.value = "";
-      lastName.value = "";
-      username.value = "";
-      password.value = "";
-      confirmPassword.value = "";
     };
 
     return {
-      firstName,
-      lastName,
+      name,
       username,
+      email,
       password,
-      confirmPassword,
       registerUser,
       errorMessage,
       successMessage
