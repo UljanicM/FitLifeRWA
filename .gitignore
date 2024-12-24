@@ -33,4 +33,6 @@ yarn-error.log*
 .env.local*
 
 # Ignoriraj .env datoteku
-.env
+# Ignoriraj .env u svim poddirektorijima
+**/.env
+
