@@ -69,6 +69,12 @@ const linksList = ref([
     visible: true // All links set to visible
   },
   {
+    title: 'Info',
+    icon: 'home',
+    link: '/info',
+    visible: true // All links set to visible
+  },
+  {
     title: 'Popis Vježbi',
     icon: 'fitness_center',
     link: '/popisvjezbi',

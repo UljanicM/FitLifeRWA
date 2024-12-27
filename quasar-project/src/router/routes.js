@@ -11,6 +11,8 @@ const routes = [
       { path: 'loginpage', component: () => import('src/pages/LoginPage.vue') }, // Login
       { path: 'registracija', component: () => import('src/pages/RegistracijaPage.vue') }, // Registracija
       { path: 'trazitrenera', component: () => import('src/pages/TraziTreneraPage.vue') }, // Registracija
+      { path: 'info', component: () => import('src/pages/PitajPage.vue') }, // Registracija
+
 
       
     ]
