@@ -2,52 +2,51 @@
   <q-layout view="lHh Lpr lFf">
     <q-header elevated class="bg-white text-red">
       <q-toolbar>
+        <q-toolbar-title class="text-h2 text-center">
+          FitLife
+        </q-toolbar-title>
         <q-btn
           flat
           dense
           round
           icon="menu"
           aria-label="Menu"
-          @click="toggleLeftDrawer"
+          @click="toggleRightDrawer"
+          class="q-ml-auto"
         />
-        <q-toolbar-title class="text-h2 text-center">
-          FitLife
-        </q-toolbar-title>
       </q-toolbar>
     </q-header>
 
+    <!-- Drawer na desnoj strani -->
     <q-drawer
-      v-model="leftDrawerOpen"
+      side="right"
+      v-model="rightDrawerOpen"
       show-if-above
       bordered
-      class="bg-red text-white"
-      @show="animateLinks"
+      class="custom-drawer bg-red text-white"
     >
       <q-list>
         <q-item-label header class="text-center text-white q-pt-md">
           Glavni linkovi
         </q-item-label>
 
-        <div>
-          <q-item
-            class="text-center"  v-for="link in linksList"
-            :key="link.title"
-          >
-            <router-link
-              :to="link.link"
-              class="cursor-pointer text-white no-decoration"
-            >
-              <q-item-section avatar>
-                <q-icon :name="link.icon" class="text-white text-center" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label class="text-white text-center">{{ link.title }}</q-item-label>
-                <q-item-label caption class="text-white text-center">{{ link.caption }}</q-item-label>
-              </q-item-section>
-            </router-link>
+        <!-- Linkovi -->
+        <router-link
+          v-for="link in linksList"
+          :key="link.title"
+          :to="link.link"
+          class="custom-item no-decoration text-white"
+          active-class="active-link"
+        >
+          <q-item clickable class="q-mb-sm">
+            <q-item-section avatar>
+              <q-icon :name="link.icon" class="text-white" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ link.title }}</q-item-label>
+            </q-item-section>
           </q-item>
-
-        </div>
+        </router-link>
       </q-list>
     </q-drawer>
 
@@ -58,74 +57,53 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref } from "vue";
 
-const leftDrawerOpen = ref(false)
+const rightDrawerOpen = ref(false);
 const linksList = ref([
-  {
-    title: 'Naslovnica',
-    icon: 'home',
-    link: '/',
-    visible: true // All links set to visible
-  },
-  {
-    title: 'Info',
-    icon: 'home',
-    link: '/info',
-    visible: true // All links set to visible
-  },
-  {
-    title: 'Popis Vježbi',
-    icon: 'fitness_center',
-    link: '/popisvjezbi',
-    visible: true
-  },
-  {
-    title: 'Trazi trenera',
-    icon: 'search',
-    link: '/trazitrenera',
-    visible: true
-  },
-  {
-    title: 'Lokacija',
-    icon: 'place',
-    link: '/lokacija',
-    visible: true
-  },
-  {
-    title: 'Login',
-    icon: 'login',
-    link: '/loginpage',
-    visible: true
-  },
-  {
-    title: 'Registracija',
-    icon: 'person_add',
-    link: '/registracija',
-    visible: true
-  },
-  {
-    title: 'O nama',
-    icon: 'info',
-    link: '/o_nama',
-    visible: true
-  }
-])
+  { title: "Naslovnica", icon: "home", link: "/" },
+  { title: "Info", icon: "info", link: "/info" },
+  { title: "Popis Vježbi", icon: "fitness_center", link: "/popisvjezbi" },
+  { title: "Trazi trenera", icon: "search", link: "/trazitrenera" },
+  { title: "Lokacija", icon: "place", link: "/lokacija" },
+  { title: "Login", icon: "login", link: "/loginpage" },
+  { title: "Registracija", icon: "person_add", link: "/registracija" },
+  { title: "O nama", icon: "info", link: "/o_nama" },
+]);
 
-function toggleLeftDrawer() {
-  leftDrawerOpen.value = !leftDrawerOpen.value
+function toggleRightDrawer() {
+  rightDrawerOpen.value = !rightDrawerOpen.value;
 }
-
-// Removed the animateLinks function as it's no longer needed
-
 </script>
 
-<style scoped>
-.cursor-pointer {
-  cursor: pointer; /* Promijenite pokazivač kada se miša pomakne iznad linkova */
-}
-.no-decoration {
-  text-decoration: none; /* Uklanja podvlačenje teksta u linkovima */
+<style>
+/* Prilagođeni stilovi za Drawer */
+.custom-drawer {
+  width: 250px; /* Širina drawera */
+  border-radius: 8px; /* Zaobljeni rubovi */
+  overflow: auto; /* Scroll za prevelik sadržaj */
 }
 
+/* Stilovi za klikabilne linkove */
+.custom-item {
+  display: block; /* Zauzima cijelu širinu */
+  width: 100%;
+}
+
+.custom-item:hover q-item {
+  background-color: rgba(255, 255, 255, 0.2); /* Pozadinska boja na hover */
+}
+
+/* Aktivni link */
+.active-link q-item {
+  background-color: rgba(255, 255, 255, 0.3); /* Pozadinska boja za aktivan link */
+}
+
+.no-decoration {
+  text-decoration: none;
+}
+
+.text-white {
+  color: white;
+}
 </style>
