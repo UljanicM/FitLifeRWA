@@ -36,6 +36,7 @@
 
 <script>
 import axios from "axios";
+import { useRouter } from "vue-router"; // Za navigaciju
 
 export default {
   data() {
@@ -67,6 +68,12 @@ export default {
           // Resetiraj korisničko ime i lozinku
           this.username = "";
           this.password = "";
+
+          // Provjeri ulogu i preusmjeri na administrativnu stranicu ako je administrator
+          const user = response.data.user;
+          if (user.role === "admin") {
+            this.$router.push("/admin"); // Preusmjeri na administrativnu stranicu
+          }
         } catch (error) {
           console.error("Greška pri prijavi:", error);
           alert(error.response ? error.response.data : "Došlo je do greške");

@@ -18,6 +18,23 @@ const routes = [
     ]
   },
   {
+    path: '/admin',
+    component: () => import('layouts/AdminLayout.vue'),
+    children: [
+      { path: '', component: () => import('pages/AdminPage.vue') },
+      { path: '/admin/popisvjezbi', component: () => import('pages/PopisVjezbiPage.vue') }, // Popis vjezbi
+      { path: '/admin/trazitrenera', component: () => import('pages/PopisTreneraPage.vue') }, // Pretraživanje
+      { path: '/admin/unosvjezbi', component: () => import('src/pages/UnosVjezbiPage.vue') }, // unos vjezbi
+      { path: '/admin/loginpage', component: () => import('src/pages/LoginPage.vue') }, // Login
+      { path: '/admin/unostrenera', component: () => import('src/pages/UnesiTreneraPage.vue') }, // unos trenera
+      { path: '/admin/trazitrenera', component: () => import('src/pages/TraziTreneraPage.vue') }, // trazi trenera
+      { path: '/admin/logout', component: () => import('src/pages/LogoutPage.vue') }, // Registracija
+
+
+      
+    ]
+  },
+  {
     path: '/:catchAll(.)',
     component: () => import('pages/ErrorNotFound.vue')
     
