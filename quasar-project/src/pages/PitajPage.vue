@@ -1,13 +1,13 @@
 <template>
   <q-page class="q-pa-md">
     <div class="q-pa-lg">
-      <h4 class="text-center">Pitaj ChatGPT  </h4>
+      <h4 class="text-center">Pitaj ChatGPT</h4>
       <!-- Polje za unos pitanja -->
       <q-input
         v-model="userQuestion"
         label="Unesite svoje pitanje"
         filled
-        cclass="text-h2 text-center"
+        class="text-center"
         @keyup.enter="postQuestion"
       />
 
@@ -23,7 +23,7 @@
       <div v-if="response" class="q-mt-lg">
         <h4 class="text-center">Odgovor:</h4>
         <q-card class="q-pa-md bg-grey-2">
-          <q-card-section>
+          <q-card-section style="max-height: 500px; overflow-y: auto; word-wrap: break-word; white-space: pre-wrap;">
             {{ response }}
           </q-card-section>
         </q-card>

@@ -114,38 +114,43 @@ app.post("/api/login", (req, res) => {
 
 
 // Nova ruta za ChatGPT API integraciju
+// Nova ruta za ChatGPT API integraciju s umjetnim kašnjenjem
 app.post("/api/chat", async (req, res) => {
-    try {
-        const { message } = req.body; // Korisnička poruka
+  try {
+      const { message } = req.body; // Korisnička poruka
 
-        // Provjera da je poruka unesena
-        if (!message) {
-            return res.status(400).json({ error: 'Message is required' });
-        }
+      // Provjera da je poruka unesena
+      if (!message) {
+          return res.status(400).json({ error: 'Message is required' });
+      }
 
-        // Slanje zahtjeva prema ChatGPT API-ju
-        const response = await axios.post(
-            'https://api.openai.com/v1/chat/completions',
-            {
-                model: 'gpt-3.5-turbo', // Ili 'gpt-4' ovisno o ključu
-                messages: [{ role: 'user', content: message }],
-                max_tokens: 100,
-            },
-            {
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-                },
-            }
-        );
+      // Slanje zahtjeva prema ChatGPT API-ju
+      const response = await axios.post(
+          'https://api.openai.com/v1/chat/completions',
+          {
+              model: 'gpt-3.5-turbo', // Ili 'gpt-4' ovisno o ključu
+              messages: [{ role: 'user', content: message }],
+              max_tokens: 400,
+          },
+          {
+              headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+              },
+          }
+      );
 
-        // Slanje odgovora klijentu
-        res.json(response.data.choices[0].message);
-    } catch (error) {
-        console.error(error.response ? error.response.data : error.message);
-        res.status(500).json({ error: 'Failed to connect to ChatGPT API' });
-    }
+      // Umjetno kašnjenje od 3 sekunde
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      // Slanje odgovora klijentu
+      res.json(response.data.choices[0].message);
+  } catch (error) {
+      console.error(error.response ? error.response.data : error.message);
+      res.status(500).json({ error: 'Failed to connect to ChatGPT API' });
+  }
 });
+
 
 app.post('/api/trainers', (req, res) => {
   const { ime_trenera, prezime_trenera, oib_trenera, adresa_trenera, tel_broj_trenera, specialnost } = req.body;
