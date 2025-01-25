@@ -1,6 +1,6 @@
 <template>
   <q-page class="flex flex-center">
-    <q-card dark bordered class="bg-grey-9 my-card">
+    <q-card bordered class="bg-white my-card">
       <!-- Slika i naslov -->
       <q-card-section>
         <q-img src="~assets/Fitlife1.jpg">
@@ -28,7 +28,7 @@
 import { ref } from 'vue'
 
 // Definiranje reaktivne varijable
-const o_nama = ref('Fitlife')
+const o_nama = ref('Fitlife je posvećen vašem zdravlju i fitness ciljevima.')
 </script>
 
 <style scoped>
@@ -38,5 +38,8 @@ const o_nama = ref('Fitlife')
 .text-primary {
   color: #1976d2;
   font-weight: bold;
+}
+.bg-white {
+  background-color: #ffffff;
 }
 </style>

@@ -12,7 +12,6 @@ const port = 3000;
 
 // Parser za JSON podatke
 app.use(bodyParser.json());
-
 // Parser za podatke iz formi
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -130,7 +129,7 @@ app.post("/api/chat", async (req, res) => {
           {
               model: 'gpt-3.5-turbo', // Ili 'gpt-4' ovisno o ključu
               messages: [{ role: 'user', content: message }],
-              max_tokens: 400,
+              max_tokens: 500,
           },
           {
               headers: {

@@ -1,23 +1,25 @@
 <template>
   <q-page padding>
     <div class="q-pa-md">
+      <!-- Pretraživanje -->
       <q-input
         v-model="searchQuery"
-        label="Unesite Ime ili Specijalnost trenera"
+        label="Unesite naziv ili kategoriju vježbe"
         outlined
         clearable
       />
 
       <div class="q-my-md">
         <q-checkbox v-model="searchByName" label="Pretraži po imenu" />
-        <q-checkbox v-model="searchBySpeciality" label="Pretraži po specijalnosti" />
+        <q-checkbox v-model="searchByCategory" label="Pretraži po kategoriji" />
       </div>
 
       <q-btn label="Traži" color="primary" @click="performSearch" />
 
+      <!-- Tablica sa filtriranim vježbama -->
       <q-table
-        v-if="filteredTreners.length"
-        :rows="filteredTreners"
+        v-if="filteredExercises.length"
+        :rows="filteredExercises"
         :columns="columns"
         row-key="id"
         title="Rezultati Pretraživanja"
@@ -43,12 +45,6 @@ export default {
       { name: 'experience', label: 'Experience', align: 'left', field: row => row.experience },
     ];
 
-    const treners = [
-      { id: 1, ime: 'Marko Horvat', speciality: 'Kardio', experience: '5 godina.' },
-      { id: 2, ime: 'Ana Novak', speciality: 'Yoga', experience: '3 godine.' },
-      { id: 3, ime: 'Ivan Kovačić', speciality: 'Snaga i kondicija', experience: '7 godina.' },
-      { id: 4, ime: 'Lucija Matić', speciality: 'Pilates', experience: '4 godine.' }
-    ];
 
     const filteredTreners = ref([]);
 
