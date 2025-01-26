@@ -10,10 +10,23 @@
 
 
 const { configure } = require('quasar/wrappers');
+const { config } = require("dotenv");
+
+module.exports = configure(function (ctx) {
+  const env = ctx.mode.cordova
+    ? config({ path: ".env.ios" }).parsed
+    : config({ path: ctx.dev ? ".env.development" : ".env.production" }).parsed;
+
+  console.log("Loaded environment variables:", env);
 
 
-module.exports = configure(function (/* ctx */) {
+
   return {
+    build: {
+      env: {
+        API_URL: env.API_URL // Proslijedi varijablu u aplikaciju
+      }
+    },
     // https://v2.quasar.dev/quasar-cli-vite/prefetch-feature
     // preFetch: true,
 
@@ -203,5 +216,5 @@ module.exports = configure(function (/* ctx */) {
       // extendBexScriptsConf (esbuildConf) {}
       // extendBexManifestJson (json) {}
     }
-  }
+  };
 });
