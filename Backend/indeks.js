@@ -6,6 +6,7 @@ const axios = require('axios');
 const mysql = require("mysql");
 require('dotenv').config({ path: './info.env' });
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const bcrypt = require('bcrypt');
 
 app.use(cors({"origin": "*"}));
 
@@ -68,60 +69,87 @@ app.get("/api/treneri/:oib_trenera", (request, response) => {
 });
 
 // API endpoint for user registration
-app.post("/api/registracija", (req, res) => {
-    const { username, email, name, password } = req.body;
+// API endpoint for Clan registration
+app.post("/api/registracija", async (req, res) => { // Promijenjeno u async funkciju
+  const { username, email, name, password } = req.body;
 
-    // Validate the input data
-    if (!username || !email || !name || !password) {
-      return res.status(400).send("Svi podaci su obavezni.");
-    }
+  const oib_clana = username;
+  const email_clana = email;
+  const ime_clana = name;
+  // NE SPREMATI password DIREKTNO
+  // const lozinka_clana = password;
 
-    // Insert the user data into the database
-    const query = 'INSERT INTO User (username, email, name, password) VALUES (?, ?, ?, ?)';
-    connection.query(query, [username, email, name, password], (error, results) => {
-      if (error) {
-        console.error('Greška pri unosu korisnika:', error);
-        return res.status(500).send('Greška pri unosu korisnika.');
-      }
-
-      res.status(200).send("Korisnik uspješno registriran.");
-    });
-  });
-
-  // API ruta za prijavu
-app.post("/api/login", (req, res) => {
-  const { username, password } = req.body;
-
-  if (!username || !password) {
-    return res.status(400).send("Korisničko ime i lozinka su obavezni.");
+  if (!oib_clana || !email_clana || !ime_clana || !password) {
+      return res.status(400).send("OIB (korisničko ime), email, ime i lozinka su obavezni.");
   }
 
-  // Provjera u bazi podataka
-  const query = "SELECT * FROM User WHERE username = ?";
-  connection.query(query, [username], (error, results) => {
-    if (error) {
-      return res.status(500).send("Greška pri provjeri korisničkih podataka.");
+  try {
+      // Generiranje "salta" i hashiranje lozinke
+      const saltRounds = 10; // Preporučena vrijednost, možete prilagoditi
+      const hashiranaLozinka = await bcrypt.hash(password, saltRounds);
+
+      // SQL upit koji unosi hashiranu lozinku
+      const query = 'INSERT INTO Clan (oib_clana, email_clana, ime_clana, lozinka_clana) VALUES (?, ?, ?, ?)';
+
+      connection.query(query, [oib_clana, email_clana, ime_clana, hashiranaLozinka], (error, results) => {
+          if (error) {
+              console.error('Greška pri unosu člana:', error);
+              if (error.code === 'ER_DUP_ENTRY') {
+                  return res.status(409).send('Član s tim OIB-om (korisničkim imenom) već postoji.');
+              }
+              return res.status(500).send('Greška pri unosu člana.');
+          }
+          res.status(200).send("Član uspješno registriran.");
+      });
+  } catch (hashError) {
+      console.error('Greška pri hashiranju lozinke:', hashError);
+      res.status(500).send('Došlo je do greške prilikom obrade vaše registracije.');
+  }
+});
+
+  // API ruta za prijavu
+  app.post("/api/login", (req, res) => { // Može ostati sinkrona ili postati async ako želite
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).send("OIB (korisničko ime) i lozinka su obavezni.");
     }
 
-    if (results.length === 0) {
-      return res.status(404).send("Korisničko ime nije pronađeno.");
-    }
+    const oib_clana = username;
 
-    const user = results[0];
+    const query = "SELECT * FROM Clan WHERE oib_clana = ?";
+    connection.query(query, [oib_clana], async (error, results) => { // Callback je sada async
+        if (error) {
+            console.error('Greška pri provjeri podataka člana:', error);
+            return res.status(500).send("Greška pri provjeri podataka člana.");
+        }
 
-    // Provjera lozinke
-    if (password === user.password) { // Trebali biste koristiti hashing za lozinke u stvarnom sustavu
-      // Dodjela uloge admina za određena korisnička imena
-      if (username === "esafarek" || username === "muljanic") {
-        user.role = "admin"; // Dodajemo rolu "admin"
-      }
+        if (results.length === 0) {
+            return res.status(401).send("Pogrešan OIB (korisničko ime) ili lozinka."); // Općenitija poruka
+        }
 
-      // Prijava je uspješna
-      res.status(200).send({ message: "Prijava uspješna", user });
-    } else {
-      res.status(401).send("Pogrešna lozinka.");
-    }
-  });
+        const clan = results[0];
+
+        try {
+            // Usporedba unesene lozinke s hashiranom lozinkom iz baze
+            const match = await bcrypt.compare(password, clan.lozinka_clana);
+
+            if (match) {
+                const clanDataToSend = { ...clan };
+                delete clanDataToSend.lozinka_clana; // Uvijek dobro ukloniti lozinku prije slanja
+
+                if (oib_clana === "esafarek" || oib_clana === "muljanic") {
+                    clanDataToSend.role = "admin";
+                }
+                res.status(200).send({ message: "Prijava uspješna", clan: clanDataToSend });
+            } else {
+                res.status(401).send("Pogrešan OIB (korisničko ime) ili lozinka.");
+            }
+        } catch (compareError) {
+            console.error('Greška pri usporedbi lozinki:', compareError);
+            res.status(500).send('Došlo je do greške prilikom prijave.');
+        }
+    });
 });
 
 

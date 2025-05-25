@@ -46,8 +46,7 @@ export default {
     const columns = [
       { name: 'id', label: 'ID', align: 'left', field: (row) => row.id },
       { name: 'name', label: 'Naziv', align: 'left', field: (row) => row.name },
-      { name: 'category', label: 'Kategorija', align: 'left', field: (row) => row.category },
-      { name: 'difficulty', label: 'Težina', align: 'left', field: (row) => row.difficulty },
+      
     ];
 
     const exercises = ref([]); // Svi podaci o vježbama

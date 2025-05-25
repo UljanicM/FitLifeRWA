@@ -11,13 +11,14 @@
         @keyup.enter="postQuestion"
       />
 
-      <!-- Gumb za slanje -->
-      <q-btn
-        label="Pošalji"
-        color="primary"
-        class="q-mb-md text-align-right"
-        @click="postQuestion"
-      />
+      <div class="q-pa-lg centar">
+        <q-btn 
+          label="Pošalji"
+          color="primary"
+          class=" text-align-center"
+          @click="postQuestion"
+        />
+      </div>
 
       <!-- Prikaz odgovora -->
       <div v-if="response" class="q-mt-lg">
@@ -84,5 +85,12 @@ export default {
 .text-negative {
   color: red;
   font-weight: bold;
+}
+.centar{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  
 }
 </style>
