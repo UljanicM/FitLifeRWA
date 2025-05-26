@@ -3,7 +3,7 @@ const app = express();
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const axios = require('axios');
-const mysql = require("mysql");
+const mysql = require("mysql2/promise"); // Koristimo mysql2/promise
 require('dotenv').config({ path: './info.env' });
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const bcrypt = require('bcrypt');
@@ -12,166 +12,375 @@ app.use(cors({"origin": "*"}));
 
 const port = 3000;
 
-// Parser za JSON podatke
 app.use(bodyParser.json());
-// Parser za podatke iz formi
 app.use(bodyParser.urlencoded({ extended: true }));
 
-const connection = mysql.createConnection({
-    host: 'ucka.veleri.hr',
-    user: 'muljanic',
-    password: '11',
-    database: 'muljanic'
-});
+let pool; // Definiramo pool varijablu
+
+async function connectToDatabase() {
+    try {
+        pool = await mysql.createPool({
+            host: 'ucka.veleri.hr',
+            user: 'muljanic',
+            password: '11',
+            database: 'muljanic',
+            waitForConnections: true,
+            connectionLimit: 10,
+            queueLimit: 0
+        });
+        console.log("Povezano s MySQL-om preko poola!");
+    } catch (err) {
+        console.error('Greška pri povezivanju s MySQL bazom podataka:', err);
+        process.exit(1);
+    }
+}
+
+connectToDatabase();
 
 app.use(express.urlencoded({ extended: true }));
 
-connection.connect(function(err) {
-    if (err) throw err;
-    console.log("Connected!");
-});
-
 // Ruta za dohvaćanje planova
-app.get("/api/planovi", (request, response) => {
-  connection.query("SELECT * FROM Plan", (error, results) => {
-      if (error) {
-          console.error('Greška pri dohvaćanju planova:', error);
-          return response.status(500).send('Greška pri dohvaćanju planova.');
-      }
+app.get("/api/planovi", async (request, response) => {
+  try {
+      const [results] = await pool.query("SELECT * FROM Plan");
       response.send(results);
-  });
+  } catch (error) {
+      console.error('Greška pri dohvaćanju planova:', error);
+      return response.status(500).send('Greška pri dohvaćanju planova.');
+  }
 });
 
 // Ruta za dohvaćanje trenera
-app.get("/api/treneri", (request, response) => {
-  connection.query("SELECT Trener.ime_trenera AS ime, Trener.prezime_trenera AS prezime, Trener.strucnost, Trener.tel_broj_trenera AS telefon FROM Trener", (error, results) => {
-      if (error) {
-          console.error('Greška pri dohvaćanju trenera:', error);
-          return response.status(500).send('Greška pri dohvaćanju trenera.');
-      }
+app.get("/api/treneri", async (request, response) => {
+  try {
+      const [results] = await pool.query("SELECT Trener.ime_trenera AS ime, Trener.prezime_trenera AS prezime, Trener.strucnost, Trener.tel_broj_trenera AS telefon, Trener.email_trenera AS email, Trener.oib_trenera FROM Trener"); // Dodan oib_trenera
       response.send(results);
-  });
+  } catch (error) {
+      console.error('Greška pri dohvaćanju trenera:', error);
+      return response.status(500).send('Greška pri dohvaćanju trenera.');
+  }
 });
 
-// Ruta za dohvaćanje pojedinog trenera
-app.get("/api/treneri/:oib_trenera", (request, response) => {
+// Ruta za dohvaćanje pojedinog trenera po OIB-u
+app.get("/api/treneri/:oib_trenera", async (request, response) => {
   const oib_trenera = request.params.oib_trenera;
-  connection.query("SELECT * FROM Trener WHERE oib_trenera = ?", [oib_trenera], (error, results) => {
-      if (error) {
-          console.error('Greška pri dohvaćanju trenera:', error);
-          return response.status(500).send('Greška pri dohvaćanju trenera.');
-      }
+  try {
+      const [results] = await pool.query("SELECT * FROM Trener WHERE oib_trenera = ?", [oib_trenera]);
       if (results.length === 0) {
           return response.status(404).send("Trener nije pronađen.");
       }
       response.send(results[0]);
-  });
+  } catch (error) {
+      console.error('Greška pri dohvaćanju trenera:', error);
+      return response.status(500).send('Greška pri dohvaćanju trenera.');
+  }
 });
 
-// API endpoint for user registration
-// API endpoint for Clan registration
-app.post("/api/registracija", async (req, res) => { // Promijenjeno u async funkciju
-  const { username, email, name, password } = req.body;
+// API endpoint za registraciju člana
+app.post("/api/registracija", async (req, res) => {
+    const { oib, email, name, password, prezime } = req.body;
 
-  const oib_clana = username;
+    const oib_clana = oib;
+    const email_clana = email;
+    const ime_clana = name;
+    const prezime_clana = prezime;
+
+    if (!oib_clana || !email_clana || !ime_clana || !prezime_clana || !password) {
+      return res.status(400).send("OIB, email, ime, prezime i lozinka su obavezni.");
+    }
+
+    try {
+      const saltRounds = 10;
+      const hashiranaLozinka = await bcrypt.hash(password, saltRounds);
+
+      const query = 'INSERT INTO Clan (oib_clana, email_clana, ime_clana, prezime_clana, lozinka_clana) VALUES (?, ?, ?, ?, ?)';
+
+      await pool.query(query, [oib_clana, email_clana, ime_clana, prezime_clana, hashiranaLozinka]);
+      res.status(200).send("Član uspješno registriran.");
+    } catch (error) {
+      console.error('Greška pri unosu člana/hashiranju lozinke:', error);
+      if (error.code === 'ER_DUP_ENTRY') {
+        return res.status(409).send('Član s tim OIB-om već postoji.');
+      }
+      res.status(500).send('Došlo je do greške prilikom obrade vaše registracije.');
+    }
+});
+
+// API ruta za prijavu člana
+app.post("/api/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).send("Email i lozinka su obavezni.");
+  }
+
   const email_clana = email;
-  const ime_clana = name;
-  // NE SPREMATI password DIREKTNO
-  // const lozinka_clana = password;
 
-  if (!oib_clana || !email_clana || !ime_clana || !password) {
-      return res.status(400).send("OIB (korisničko ime), email, ime i lozinka su obavezni.");
+  try {
+    const query = "SELECT * FROM Clan WHERE email_clana = ?";
+    const [results] = await pool.query(query, [email_clana]);
+
+    if (results.length === 0) {
+      return res.status(401).send("Pogrešan email ili lozinka.");
+    }
+
+    const clan = results[0];
+
+    const match = await bcrypt.compare(password, clan.lozinka_clana);
+
+    if (match) {
+      const clanDataToSend = { ...clan };
+      delete clanDataToSend.lozinka_clana;
+
+      if (clan.oib_clana === "esafarek" || clan.oib_clana === "muljanic") {
+        clanDataToSend.role = "admin";
+      }
+      res.status(200).send({ message: "Prijava uspješna", clan: clanDataToSend });
+    } else {
+      res.status(401).send("Pogrešan email ili lozinka.");
+    }
+  } catch (error) {
+    console.error('Greška pri provjeri/usporedbi lozinki:', error);
+    res.status(500).send('Došlo je do greške prilikom prijave.');
+  }
+});
+
+// API ruta za dohvaćanje podataka profila pojedinog člana
+app.get("/api/clan/:oib_clana", async (req, res) => {
+  const oib_clana = req.params.oib_clana;
+  try {
+    const [results] = await pool.query(
+      "SELECT oib_clana, email_clana, ime_clana, prezime_clana, tel_broj_clana, kilaza, kategorija FROM Clan WHERE oib_clana = ?",
+      [oib_clana]
+    );
+    if (results.length === 0) {
+      return res.status(404).send("Član nije pronađen.");
+    }
+    res.status(200).send({ clan: results[0] });
+  } catch (error) {
+    console.error('Greška pri dohvaćanju člana:', error);
+    return res.status(500).send('Greška pri dohvaćanju podataka o članu.');
+  }
+});
+
+// API ruta za ažuriranje podataka profila člana
+app.put("/api/clan/:oib_clana", async (req, res) => {
+  const oib_clana = req.params.oib_clana;
+  const { ime_clana, prezime_clana, email_clana, tel_broj_clana, kilaza, kategorija } = req.body;
+
+  if (!ime_clana || !prezime_clana || !email_clana) {
+    return res.status(400).send("Ime, prezime i email su obavezni za ažuriranje.");
+  }
+
+  const query = `UPDATE Clan SET ime_clana = ?, prezime_clana = ?, email_clana = ?, tel_broj_clana = ?, kilaza = ?, kategorija = ? WHERE oib_clana = ?`;
+
+  try {
+    const [updateResults] = await pool.query(
+      query,
+      [ime_clana, prezime_clana, email_clana, tel_broj_clana, kilaza, kategorija, oib_clana]
+    );
+
+    if (updateResults.affectedRows === 0) {
+      return res.status(404).send("Član nije pronađen ili podaci nisu promijenjeni.");
+    }
+
+    const [updatedResults] = await pool.query(
+      "SELECT oib_clana, email_clana, ime_clana, prezime_clana, tel_broj_clana, kilaza, kategorija FROM Clan WHERE oib_clana = ?",
+      [oib_clana]
+    );
+    res.status(200).send({ message: 'Profil uspješno ažuriran.', clan: updatedResults[0] });
+  } catch (error) {
+    console.error('Greška pri ažuriranju člana:', error);
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).send('Email adresa je već u upotrebi.');
+    }
+    res.status(500).send('Greška pri ažuriranju podataka o članu.');
+  }
+});
+
+// API ruta za dohvaćanje svih članova (za pretraživanje)
+app.get("/api/clanovi", async (request, response) => {
+  try {
+    const [results] = await pool.query(
+      "SELECT oib_clana, ime_clana, prezime_clana, email_clana, tel_broj_clana, kilaza, kategorija FROM Clan"
+    );
+    response.status(200).send({ clanovi: results });
+  } catch (error) {
+    console.error('Greška pri dohvaćanju članova:', error);
+    return response.status(500).send('Greška pri dohvaćanju članova.');
+  }
+});
+
+// API za odabir plana i trenera za člana
+app.post("/api/clanovi/odabir-plana", async (req, res) => {
+  const { oib_clana, naziv_plana, oib_trenera } = req.body;
+
+  if (!oib_clana || !naziv_plana || !oib_trenera) {
+    return res.status(400).json({ message: 'OIB člana, naziv plana i OIB trenera su obavezni.' });
   }
 
   try {
-      // Generiranje "salta" i hashiranje lozinke
-      const saltRounds = 10; // Preporučena vrijednost, možete prilagoditi
-      const hashiranaLozinka = await bcrypt.hash(password, saltRounds);
+    // PROMJENA: Uklonjen 'id' iz SELECT upita, dohvaćamo samo trajanje_plana
+    const [planResults] = await pool.query("SELECT trajanje_plana FROM Plan WHERE naziv_plana = ?", [naziv_plana]);
+    if (planResults.length === 0) {
+      return res.status(404).json({ message: 'Plan s tim nazivom nije pronađen.' });
+    }
+    const trajanje_plana = planResults[0].trajanje_plana;
 
-      // SQL upit koji unosi hashiranu lozinku
-      const query = 'INSERT INTO Clan (oib_clana, email_clana, ime_clana, lozinka_clana) VALUES (?, ?, ?, ?)';
+    const datum_pocetka_plana = new Date();
+    const datum_isteka_plana = new Date(datum_pocetka_plana);
+    datum_isteka_plana.setDate(datum_pocetka_plana.getDate() + trajanje_plana);
 
-      connection.query(query, [oib_clana, email_clana, ime_clana, hashiranaLozinka], (error, results) => {
-          if (error) {
-              console.error('Greška pri unosu člana:', error);
-              if (error.code === 'ER_DUP_ENTRY') {
-                  return res.status(409).send('Član s tim OIB-om (korisničkim imenom) već postoji.');
-              }
-              return res.status(500).send('Greška pri unosu člana.');
-          }
-          res.status(200).send("Član uspješno registriran.");
-      });
-  } catch (hashError) {
-      console.error('Greška pri hashiranju lozinke:', hashError);
-      res.status(500).send('Došlo je do greške prilikom obrade vaše registracije.');
+    const formatted_pocetak = datum_pocetka_plana.toISOString().slice(0, 10);
+    const formatted_istek = datum_isteka_plana.toISOString().slice(0, 10);
+
+    const [existingPlan] = await pool.query("SELECT * FROM Clan_Aktivni_Plan WHERE oib_clana = ?", [oib_clana]);
+
+    let query;
+    let params;
+
+    if (existingPlan.length > 0) {
+      query = `UPDATE Clan_Aktivni_Plan SET naziv_plana = ?, oib_trenera = ?, datum_pocetka_plana = ?, datum_isteka_plana = ? WHERE oib_clana = ?`;
+      params = [naziv_plana, oib_trenera, formatted_pocetak, formatted_istek, oib_clana];
+    } else {
+      query = `INSERT INTO Clan_Aktivni_Plan (oib_clana, naziv_plana, oib_trenera, datum_pocetka_plana, datum_isteka_plana) VALUES (?, ?, ?, ?, ?)`;
+      params = [oib_clana, naziv_plana, oib_trenera, formatted_pocetak, formatted_istek];
+    }
+
+    await pool.query(query, params);
+
+    res.status(200).json({
+      message: existingPlan.length > 0 ? 'Plan uspješno ažuriran!' : 'Plan uspješno odabran!',
+      datum_pocetka: formatted_pocetak,
+      datum_isteka: formatted_istek
+    });
+
+  } catch (error) {
+    console.error('Greška pri odabiru/ažuriranju plana člana:', error);
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ message: 'Član već ima aktivan plan. Molimo ažurirajte postojeći plan.' });
+    }
+    res.status(500).json({ message: 'Došlo je do greške pri odabiru/ažuriranju plana.', error: error.message });
   }
 });
 
-  // API ruta za prijavu
-  app.post("/api/login", (req, res) => { // Može ostati sinkrona ili postati async ako želite
-    const { username, password } = req.body;
+// Ruta za dohvaćanje aktivnog plana i trenera za člana
+app.get("/api/clanovi/:oib_clana/aktivni-plan", async (req, res) => {
+  const oib_clana = req.params.oib_clana;
 
-    if (!username || !password) {
-        return res.status(400).send("OIB (korisničko ime) i lozinka su obavezni.");
+  if (!oib_clana) {
+    return res.status(400).json({ message: 'OIB člana je obavezan.' });
+  }
+
+  try {
+    const query = `
+      SELECT
+          cap.naziv_plana,
+          cap.datum_pocetka_plana,
+          cap.datum_isteka_plana,
+          t.ime_trenera,
+          t.prezime_trenera,
+          t.email_trenera,
+          t.tel_broj_trenera,
+          t.strucnost
+      FROM
+          Clan_Aktivni_Plan cap
+      JOIN
+          Trener t ON cap.oib_trenera = t.oib_trenera
+      WHERE
+          cap.oib_clana = ?;
+    `;
+    const [results] = await pool.query(query, [oib_clana]);
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'Nema aktivnog plana za ovog člana.' });
     }
 
-    const oib_clana = username;
+    res.status(200).json({ aktivniPlan: results[0] });
 
-    const query = "SELECT * FROM Clan WHERE oib_clana = ?";
-    connection.query(query, [oib_clana], async (error, results) => { // Callback je sada async
-        if (error) {
-            console.error('Greška pri provjeri podataka člana:', error);
-            return res.status(500).send("Greška pri provjeri podataka člana.");
+  } catch (error) {
+    console.error('Greška pri dohvaćanju aktivnog plana člana:', error);
+    res.status(500).json({ message: 'Došlo je do greške pri dohvaćanju aktivnog plana.', error: error.message });
+  }
+});
+
+// RUTA: Spremanje unosa napretka člana
+app.post("/api/napredak", async (req, res) => {
+    const { oib_clana, datum_unosa, tezina, duzina_izvedbe_plana, kategorija_clana } = req.body;
+
+    if (!oib_clana || !datum_unosa || tezina === undefined || tezina === null) {
+        return res.status(400).json({ message: 'OIB člana, datum unosa i težina su obavezni.' });
+    }
+
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(datum_unosa)) {
+        return res.status(400).json({ message: 'Datum unosa mora biti u formatuIY-MM-DD.' });
+    }
+
+    try {
+        const query = `
+            INSERT INTO Napredak_Clana (oib_clana, datum_unosa, tezina, duzina_izvedbe_plana, kategorija_clana)
+            VALUES (?, ?, ?, ?, ?)
+        `;
+        const params = [oib_clana, datum_unosa, tezina, duzina_izvedbe_plana || null, kategorija_clana || null];
+
+        await pool.query(query, params);
+
+        res.status(201).json({ message: 'Napredak uspješno spremljen!' });
+
+    } catch (error) {
+        console.error('Greška pri spremanju napretka:', error);
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ message: 'Već ste unijeli napredak za ovaj datum.' });
         }
+        res.status(500).json({ message: 'Došlo je do greške pri spremanju napretka.', error: error.message });
+    }
+});
+
+// RUTA: Dohvaćanje povijesti napretka za člana
+app.get("/api/clanovi/:oib_clana/napredak", async (req, res) => {
+    const oib_clana = req.params.oib_clana;
+
+    if (!oib_clana) {
+        return res.status(400).json({ message: 'OIB člana je obavezan.' });
+    }
+
+    try {
+        const query = `
+            SELECT datum_unosa, tezina, duzina_izvedbe_plana, kategorija_clana
+            FROM Napredak_Clana
+            WHERE oib_clana = ?
+            ORDER BY datum_unosa DESC;
+        `;
+        const [results] = await pool.query(query, [oib_clana]);
 
         if (results.length === 0) {
-            return res.status(401).send("Pogrešan OIB (korisničko ime) ili lozinka."); // Općenitija poruka
+            return res.status(404).json({ message: 'Nema unosa napretka za ovog člana.' });
         }
 
-        const clan = results[0];
+        res.status(200).json({ povijestNapretka: results });
 
-        try {
-            // Usporedba unesene lozinke s hashiranom lozinkom iz baze
-            const match = await bcrypt.compare(password, clan.lozinka_clana);
-
-            if (match) {
-                const clanDataToSend = { ...clan };
-                delete clanDataToSend.lozinka_clana; // Uvijek dobro ukloniti lozinku prije slanja
-
-                if (oib_clana === "esafarek" || oib_clana === "muljanic") {
-                    clanDataToSend.role = "admin";
-                }
-                res.status(200).send({ message: "Prijava uspješna", clan: clanDataToSend });
-            } else {
-                res.status(401).send("Pogrešan OIB (korisničko ime) ili lozinka.");
-            }
-        } catch (compareError) {
-            console.error('Greška pri usporedbi lozinki:', compareError);
-            res.status(500).send('Došlo je do greške prilikom prijave.');
-        }
-    });
+    } catch (error) {
+        console.error('Greška pri dohvaćanju povijesti napretka:', error);
+        res.status(500).json({ message: 'Došlo je do greške pri dohvaćanju povijesti napretka.', error: error.message });
+    }
 });
 
 
-// Nova ruta za Gemini API integraciju s umjetnim kašnjenjem
-
-
+// API ruta za integraciju Gemini AI chata s umjetnim kašnjenjem
 app.post("/api/chat", async (req, res) => {
     try {
-        const { message } = req.body; // Korisnička poruka
+        const { message } = req.body;
 
-        // Provjera da je poruka unesena
         if (!message) {
-            return res.status(400).json({ error: 'Message is required' });
+            return res.status(400).json({ error: 'Poruka je obavezna' });
         }
 
-        // Inicijalizacija Gemini API klijenta
         const genAI = new GoogleGenerativeAI(process.env.API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-pro" }); // Ili drugi odgovarajući Gemini model
+        const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 
-        // Slanje zahtjeva prema Gemini API-ju
         const chat = model.startChat({
-            history: [], // Možete dodati prethodne poruke ovdje ako je potrebno
+            history: [],
             generationConfig: {
                 maxOutputTokens: 500,
             },
@@ -181,92 +390,91 @@ app.post("/api/chat", async (req, res) => {
         const response = await result.response;
         const text = response.text();
 
-        // Umjetno kašnjenje od 3 sekunde
         await new Promise((resolve) => setTimeout(resolve, 3000));
 
-        // Slanje odgovora klijentu
-        res.json({ role: 'model', content: text }); // Prilagođeno da odgovara strukturi koju ste imali
+        res.json({ role: 'model', content: text });
 
     } catch (error) {
-        console.error("Error connecting to Gemini API:", error);
-        // Pokušajte logirati detalje greške ako su dostupni
+        console.error("Greška pri povezivanju s Gemini API-jem:", error);
         if (error.response && error.response.data) {
-            console.error("Gemini API Error Details:", error.response.data);
+            console.error("Detalji greške Gemini API-ja:", error.response.data);
         } else if (error.message) {
-            console.error("Error Message:", error.message);
+            console.error("Poruka greške:", error.message);
         }
-        res.status(500).json({ error: 'Failed to connect to Gemini API' });
+        res.status(500).json({ error: 'Nije uspjelo povezivanje s Gemini API-jem' });
     }
 });
 
-
-app.post('/api/trainers', (req, res) => {
-  const { ime_trenera, prezime_trenera, oib_trenera, adresa_trenera, tel_broj_trenera, strucnost } = req.body;
+// API ruta za dodavanje novih trenera
+app.post('/api/trainers', async (req, res) => {
+  const { ime_trenera, prezime_trenera, oib_trenera, email_trenera, tel_broj_trenera, specialnost } = req.body;
 
   console.log('Podaci iz zahtjeva za unos trenera:', req.body);
 
-  if (!ime_trenera || !prezime_trenera || !oib_trenera || !adresa_trenera || !tel_broj_trenera || !strucnost) {
+  if (!ime_trenera || !prezime_trenera || !oib_trenera || !email_trenera || !tel_broj_trenera || !specialnost) {
       console.log('Greška: Nedostaju neki podaci za unos trenera');
-      return res.status(400).json({ message: 'Svi podaci (ime_trenera, prezime_trenera, oib_trenera, adresa_trenera, tel_broj_trenera, strucnost) su obavezni.' });
+      return res.status(400).json({ message: 'Svi podaci (ime trenera, prezime trenera, OIB, email, telefon, specijalnost) su obavezni.' });
   }
 
-  const query = `INSERT INTO Trener (ime_trenera, prezime_trenera, oib_trenera, adresa_trenera, tel_broj_trenera, strucnost)
-                 VALUES (?, ?, ?, ?, ?, ?)`;
+  const query = `INSERT INTO Trener (oib_trenera, ime_trenera, prezime_trenera, strucnost, email_trenera, tel_broj_trenera)
+                   VALUES (?, ?, ?, ?, ?, ?)`;
 
-  connection.query(query, [ime_trenera, prezime_trenera, oib_trenera, adresa_trenera, tel_broj_trenera, strucnost], (err, result) => {
-      if (err) {
-          console.error('Greška pri unosu trenera:', err);
-          return res.status(500).json({ message: 'Došlo je do greške pri unosu trenera.', error: err });
+  try {
+      const [result] = await pool.query(query, [oib_trenera, ime_trenera, prezime_trenera, specialnost, email_trenera, tel_broj_trenera]);
+      res.status(200).json({ message: 'Trener uspješno dodan!', oib_trenera: oib_trenera });
+  } catch (err) {
+      console.error('Greška pri unosu trenera:', err);
+      if (err.code === 'ER_DUP_ENTRY') {
+        return res.status(409).json({ message: 'Trener s tim OIB-om ili email adresom već postoji.' });
       }
-      res.status(200).json({ message: 'Trener uspješno unesen!', oib_trenera: oib_trenera });
-  });
+      res.status(500).json({ message: 'Došlo je do greške pri unosu trenera.', error: err });
+  }
 });
 
-
-// Ruta za dohvaćanje svih vježbi
-app.get("/api/vjezbe", (request, response) => {
-  connection.query("SELECT * FROM Exercises", (error, results) => {
-      if (error) throw error;
+// API ruta za dohvaćanje svih vježbi
+app.get("/api/vjezbe", async (request, response) => {
+  try {
+      const [results] = await pool.query("SELECT * FROM Exercises");
       response.send(results);
-  });
+  } catch (error) {
+      console.error('Greška pri dohvaćanju vježbi:', error);
+      return response.status(500).send('Greška pri dohvaćanju vježbi.');
+  }
 });
 
-// Ruta za dohvaćanje pojedine vježbe prema ID-u
-app.get("/api/vjezbe/:id", (request, response) => {
+// API ruta za dohvaćanje pojedine vježbe po ID-u
+app.get("/api/vjezbe/:id", async (request, response) => {
   const id = request.params.id;
-  connection.query("SELECT * FROM Exercises WHERE id = ?", [id], (error, results) => {
-      if (error) throw error;
+  try {
+      const [results] = await pool.query("SELECT * FROM Exercises WHERE id = ?", [id]);
       response.send(results);
-  });
+  } catch (error) {
+      console.error('Greška pri dohvaćanju vježbe po ID-u:', error);
+      return response.status(500).send('Greška pri dohvaćanju vježbe po ID-u.');
+  }
 });
 
-// Ruta za dodavanje nove vježbe
-app.post("/api/vjezbe", (req, res) => {
+// API ruta za dodavanje nove vježbe
+app.post("/api/vjezbe", async (req, res) => {
   const { name, category, difficulty } = req.body;
 
-  // Provjera da su svi podaci prisutni
   if (!name || !category || !difficulty) {
     return res.status(400).json({ message: 'Svi podaci su obavezni.' });
   }
 
-  // SQL upit za dodavanje vježbe u bazu podataka
-  const query = `INSERT INTO Exercises (name, category, difficulty) 
-                 VALUES (?, ?, ?)`;  // Bez label i value
+  const query = `INSERT INTO Exercises (name, category, difficulty)
+                   VALUES (?, ?, ?)`;
 
-  connection.query(query, [name, category, difficulty], (err, result) => {
-      if (err) {
-          console.error('Greška pri unosu vježbe:', err);
-          return res.status(500).json({ message: 'Došlo je do greške pri unosu vježbe.', error: err });
-      }
-      // Ako je unos uspješan, vraćamo ID nove vježbe
-      res.status(200).json({ message: 'Vježba uspješno unesena!', id: result.insertId });
-  });
+  try {
+      const [result] = await pool.query(query, [name, category, difficulty]);
+      res.status(200).json({ message: 'Vježba uspješno dodana!', id: result.insertId });
+  } catch (err) {
+      console.error('Greška pri unosu vježbe:', err);
+      return res.status(500).json({ message: 'Došlo je do greške pri unosu vježbe.', error: err });
+  }
 });
 
-
-
-
-// Pokretanje servera
+// Pokretanje Express servera
 app.listen(port, () => {
-    console.log("Server running at port: " + port);
+    console.log("Server radi na portu: " + port);
 });

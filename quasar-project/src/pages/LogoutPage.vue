@@ -1,69 +1,56 @@
 <template>
-  <q-page class="q-pa-md flex justify-center items-center">
-    <div class="form-container">
-      <h1 class="text-center">Kliknite za odjavu.</h1>
-      
-
-      <!-- Gumb za logout -->
-      <q-btn label="Odjavi se" color="negative" @click="confirmLogout" class="full-width-btn" />
-    </div>
+  <q-page class="flex flex-center">
+    <q-spinner
+      color="primary"
+      size="3em"
+      :thickness="2"
+    />
+    <p class="q-mt-md">Obrada odjave...</p>
   </q-page>
 </template>
 
-<script>
-export default {
-  methods: {
-    confirmLogout() {
-      // Prikazivanje potvrde korisniku
-      const isConfirmed = confirm("Jeste li sigurni da se želite odjaviti?");
-      
-      // Ako korisnik potvrdi, obriši podatke i preusmjeri
-      if (isConfirmed) {
-        // Brisanje podataka o korisniku (ako je pohranjen u localStorage)
-        localStorage.removeItem('user');
+<script setup>
+import { onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
 
-        // Preusmjerenje na stranicu koja nije admin
-        this.$router.push('/');
-      }
-    }
-  }
-};
+const router = useRouter();
+const $q = useQuasar();
+
+onMounted(() => {
+  // Prikaz dijaloškog okvira za potvrdu odjave
+  $q.dialog({
+    title: 'Potvrda odjave',
+    message: 'Jeste li sigurni da se želite odjaviti?',
+    ok: 'Da',     // PROMJENA: Gumb za potvrdu je sada 'Da'
+    cancel: 'Ne', // PROMJENA: Gumb za otkazivanje je sada 'Ne'
+    persistent: true // Korisnik mora kliknuti OK/Cancel, ne može kliknuti izvan
+  }).onOk(() => {
+    // Ako korisnik potvrdi odjavu
+    localStorage.removeItem('clan'); // Ukloni podatke o članu
+    
+    // Emitiraj globalni događaj da se MainLayout ažurira
+    window.dispatchEvent(new Event('auth-change')); 
+
+    $q.notify({
+      type: 'info',
+      message: 'Uspješno ste se odjavili.',
+      position: 'top'
+    });
+    router.push('/loginpage'); // Preusmjeri na stranicu za prijavu
+  }).onCancel(() => {
+    // Ako korisnik otkaže odjavu
+    $q.notify({
+      type: 'info',
+      message: 'Odjava otkazana.',
+      position: 'top'
+    });
+    // Preusmjeri korisnika natrag na prethodnu stranicu ili naslovnicu
+    router.go(-1); // Vrati se na prethodnu stranicu
+  });
+});
 </script>
 
 <style scoped>
-/* Stilizacija za logout gumb i stranicu */
-.form-container {
-  background-color: #fff;
-  padding: 30px;
-  border-radius: 12px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  width: 100%;
-  max-width: 500px;
-}
-
-h1 {
-  font-size: 2.5rem;
-  color: #422c50;
-  margin-bottom: 15px;
-  font-weight: bold;
-}
-
-p {
-  font-size: 1.2rem;
-  color: #7f8c8d;
-  margin-bottom: 30px;
-}
-
-.q-btn {
-  width: 100%;
-  margin-top: 20px;
-  border-radius: 10px;
-  padding: 12px 0;
-}
-
-.q-btn:hover {
-  background-color: #6619d2;
-  transform: scale(1.05);
-  transition: transform 0.3s ease, background-color 0.3s ease;
-}
+/* Stilovi za ovu stranicu (ako su potrebni, npr. za spinner) */
 </style>

@@ -9,17 +9,15 @@
 // https://v2.quasar.dev/quasar-cli-vite/quasar-config-js
 
 
-const { configure } = require('quasar/wrappers');
-const { config } = require("dotenv");
+import { configure } from 'quasar/wrappers';
+import { config as dotenvConfig } from "dotenv";
 
-module.exports = configure(function (ctx) {
+export default configure(function (ctx) {
   const env = ctx.mode.cordova
-    ? config({ path: ".env.ios" }).parsed
-    : config({ path: ctx.dev ? ".env.development" : ".env.production" }).parsed;
+    ? dotenvConfig({ path: ".env.ios" }).parsed
+    : dotenvConfig({ path: ctx.dev ? ".env.development" : ".env.production" }).parsed;
 
   console.log("Loaded environment variables:", env);
-
-
 
   return {
     build: {
@@ -113,7 +111,8 @@ module.exports = configure(function (ctx) {
       // directives: [],
 
       // Quasar plugins
-      plugins: []
+      // OVDJE JE KLJUČNO: Dodajte 'Dialog' i 'Notify'
+      plugins: ['Notify', 'Dialog'] // OBAVEZNO DA SU OVDJE
     },
 
     // animations: 'all', // --- includes all animations
