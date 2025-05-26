@@ -132,7 +132,7 @@ app.post("/api/login", async (req, res) => {
       const clanDataToSend = { ...clan };
       delete clanDataToSend.lozinka_clana;
 
-      if (clan.oib_clana === "esafarek" || clan.oib_clana === "muljanic") {
+      if (clan.oib_clana === "12345678901" || clan.oib_clana === "muljanic") {
         clanDataToSend.role = "admin";
       }
       res.status(200).send({ message: "Prijava uspješna", clan: clanDataToSend });

@@ -134,11 +134,11 @@ const fetchPlans = async () => {
   try {
     const response = await axios.get('http://localhost:3000/api/planovi');
     plans.value = response.data || [];
-    $q.notify({
-      type: 'positive',
-      message: 'Planovi uspješno učitani!',
-      position: 'top'
-    });
+    // $q.notify({ // Uklonjeno: Notifikacija za uspješno učitavanje
+    //   type: 'positive',
+    //   message: 'Planovi uspješno učitani!',
+    //   position: 'top'
+    // });
   } catch (error) {
     console.error('Greška pri dohvaćanju planova:', error);
     $q.notify({

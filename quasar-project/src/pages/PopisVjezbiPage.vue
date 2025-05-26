@@ -1,101 +1,111 @@
 <template>
   <q-page padding>
     <div class="q-pa-md">
-      <!-- Pretraživanje -->
-      <q-input
-        v-model="searchQuery"
-        label="Unesite naziv ili kategoriju vježbe"
-        outlined
-        clearable
-        class="q-my-md"
-      />
+      <q-card flat bordered class="q-mb-md">
+        <q-card-section>
+          <div class="text-h5 q-mb-md">Popis Vježbi</div>
+          <q-input
+            v-model="searchTerm"
+            label="Pretraži po nazivu, kategoriji ili težini"
+            outlined
+            clearable
+            dense
+            @update:model-value="filterExercises"
+          >
+            <template v-slot:append>
+              <q-icon name="search" />
+            </template>
+          </q-input>
+        </q-card-section>
+      </q-card>
 
-      <!-- Tablica sa filtriranim vježbama -->
-      <q-table
-        v-if="filteredExercises.length"
-        :rows="filteredExercises"
-        :columns="columns"
-        row-key="id"
-        :pagination="pagination"
-        class="q-mt-md"
-      />
-      
-      <!-- Poruka ako nema rezultata -->
-      <div v-else class="q-my-md text-center text-red">
-        Nema rezultata za traženi pojam.
-      </div>
+      <q-list bordered separator v-if="filteredExercises.length > 0">
+        <q-item v-for="exercise in filteredExercises" :key="exercise.id" clickable v-ripple>
+          <q-item-section avatar>
+            <q-avatar color="purple" text-color="white" icon="fitness_center" />
+          </q-item-section>
+
+          <q-item-section>
+            <q-item-label class="text-h6">{{ exercise.name }}</q-item-label>
+            <q-item-label caption>Kategorija: {{ exercise.category }}</q-item-label>
+            <q-item-label caption>Težina: {{ exercise.difficulty }}</q-item-label>
+          </q-item-section>
+        </q-item>
+      </q-list>
+
+      <q-card v-else-if="!loading" flat bordered class="q-mt-md">
+        <q-card-section class="text-center text-grey-7">
+          Nema pronađenih vježbi.
+        </q-card-section>
+      </q-card>
+
+      <q-inner-loading :showing="loading">
+        <q-spinner-gears size="50px" color="purple" />
+        <p class="q-mt-md">Učitavanje vježbi...</p>
+      </q-inner-loading>
     </div>
   </q-page>
 </template>
 
-<script>
-import { ref, computed, onMounted } from 'vue';
+<script setup>
+import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
+import { useQuasar } from 'quasar';
 
-export default {
-  setup() {
-    const searchQuery = ref(''); // Tekst za pretragu
-    const searchByName = ref(true); // Pretraga po imenu
-    const searchByCategory = ref(true); // Pretraga po kategoriji
-    const pagination = ref({
-      page: 1,
-      rowsPerPage: 50,
+const $q = useQuasar();
+
+const exercises = ref([]);
+const searchTerm = ref('');
+const loading = ref(true);
+
+const filteredExercises = computed(() => {
+  if (!searchTerm.value) {
+    return exercises.value;
+  }
+  const lowerCaseSearchTerm = searchTerm.value.toLowerCase();
+  return exercises.value.filter(exercise =>
+    (exercise.name && exercise.name.toLowerCase().includes(lowerCaseSearchTerm)) ||
+    (exercise.category && exercise.category.toLowerCase().includes(lowerCaseSearchTerm)) ||
+    (exercise.difficulty && exercise.difficulty.toLowerCase().includes(lowerCaseSearchTerm))
+  );
+});
+
+const fetchExercises = async () => {
+  loading.value = true;
+  try {
+    const response = await axios.get('http://localhost:3000/api/vjezbe');
+    exercises.value = response.data || [];
+    // $q.notify({ // Uklonjeno: Notifikacija za uspješno učitavanje
+    //   type: 'positive',
+    //   message: 'Vježbe uspješno učitane!',
+    //   position: 'top'
+    // });
+  } catch (error) {
+    console.error('Greška pri dohvaćanju vježbi:', error);
+    $q.notify({
+      type: 'negative',
+      message: 'Greška pri učitavanju liste vježbi.',
+      position: 'top'
     });
-
-    // Definicija stupaca za tablicu
-    const columns = [
-      { name: 'id', label: 'ID', align: 'left', field: (row) => row.id },
-      { name: 'name', label: 'Naziv', align: 'left', field: (row) => row.name },
-      
-    ];
-
-    const exercises = ref([]); // Svi podaci o vježbama
-
-    // Filtrirane vježbe
-    const filteredExercises = computed(() => {
-      if (!searchQuery.value) return exercises.value; // Ako nema unosa, vrati sve vježbe
-
-      const query = searchQuery.value.toLowerCase();
-
-      return exercises.value.filter((exercise) => {
-        if (searchByName.value && exercise.name.toLowerCase().includes(query)) {
-          return true;
-        }
-        if (searchByCategory.value && exercise.category.toLowerCase().includes(query)) {
-          return true;
-        }
-        return false;
-      });
-    });
-
-    // Funkcija za dohvat podataka
-    const fetchExercises = async () => {
-      try {
-        const response = await axios.get('http://localhost:3000/api/vjezbe');
-        exercises.value = response.data;
-      } catch (error) {
-        console.error('Greška prilikom dohvaćanja vježbi:', error);
-      }
-    };
-
-    // Učitaj vježbe prilikom inicijalizacije
-    onMounted(fetchExercises);
-
-    return {
-      searchQuery,
-      searchByName,
-      searchByCategory,
-      columns,
-      exercises,
-      filteredExercises,
-      pagination,
-    };
-  },
+  } finally {
+    loading.value = false;
+  }
 };
+
+const filterExercises = () => {
+  // Filtriranje se događa automatski putem computed property 'filteredExercises'
+};
+
+onMounted(() => {
+  fetchExercises();
+});
 </script>
 
 <style scoped>
-.error {
-  color: red;
+.my-card {
+  max-width: 700px;
+  margin: auto;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 </style>

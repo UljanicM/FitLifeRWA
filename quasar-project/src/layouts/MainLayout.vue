@@ -77,18 +77,37 @@ onMounted(() => {
 });
 
 const handleLogout = () => {
-  localStorage.removeItem('clan');
-  updateLoginStatus();
-  $q.notify({
-    type: 'info',
-    message: 'Uspješno ste se odjavili.',
-    position: 'top'
+  // PROMJENA: Dodan dijaloški okvir za potvrdu odjave
+  $q.dialog({
+    title: 'Potvrda odjave',
+    message: 'Jeste li sigurni da se želite odjaviti?',
+    cancel: 'Ne', // PROMJENA: Labela za otkazivanje je 'Ne'
+    ok: 'Da',     // PROMJENA: Labela za potvrdu je 'Da'
+    persistent: true
+  }).onOk(() => {
+    // Ako korisnik potvrdi odjavu
+    localStorage.removeItem('clan');
+    updateLoginStatus();
+    $q.notify({
+      type: 'info',
+      message: 'Uspješno ste se odjavili.',
+      position: 'top'
+    });
+    router.push('/loginpage');
+  }).onCancel(() => {
+    // Ako korisnik otkaže odjavu
+    $q.notify({
+      type: 'info',
+      message: 'Odjava otkazana.',
+      position: 'top'
+    });
   });
-  router.push('/loginpage');
 };
 
 const linksList = computed(() => {
-  const baseLinks = [];
+  const baseLinks = [
+    // Ovdje možete dodati linkove koji su uvijek vidljivi
+  ];
 
   if (isLoggedIn.value) {
     return [
@@ -120,6 +139,7 @@ function toggleRightDrawer() {
 </script>
 
 <style>
+/* Vaši stilovi ostaju isti */
 .custom-drawer {
   width: 250px;
   overflow: auto;

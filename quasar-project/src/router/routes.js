@@ -29,7 +29,6 @@ const routes = [
         component: () => import('src/pages/PopisPlanovaPage.vue'),
         meta: { requiresAuth: true }
       },
-      // NOVA RUTA ZA PRETRAŽIVANJE DRUGIH ČLANOVA
       {
         path: 'pretrazi-druge-clanove',
         name: 'pretrazi-druge-clanove',
@@ -43,12 +42,14 @@ const routes = [
     component: () => import('layouts/AdminLayout.vue'),
     children: [
       { path: '', component: () => import('pages/AdminPage.vue') },
-      { path: 'popisvjezbi', component: () => import('pages/PopisVjezbiPage.vue') },
+      // PROMJENA: Uklonjene rute za vježbe
       { path: 'trazitrenera', component: () => import('pages/PopisTreneraPage.vue') },
-      { path: 'unosvjezbi', component: () => import('src/pages/UnosVjezbiPage.vue') },
+      { path: 'unosvjezbi', component: () => import('src/pages/UnosVjezbiPage.vue') }, // Ostavljeno ako se koristi drugdje
       { path: 'loginpage', component: () => import('src/pages/LoginPage.vue') },
       { path: 'unostrenera', component: () => import('src/pages/UnesiTreneraPage.vue') },
       { path: 'logout', component: () => import('src/pages/LogoutPage.vue') },
+      // NOVA RUTA ZA PREGLED PLANOVA U ADMIN PANELU
+      { path: 'pregledplanova', component: () => import('src/pages/PopisPlanovaPage.vue') }, // Admin koristi istu komponentu za pregled
     ]
   },
   {

@@ -239,10 +239,9 @@ const loadingProfile = ref(true);
 const aktivniPlan = ref(null);
 const loadingActivePlan = ref(true);
 
-// Stanja za praćenje napretka
 const novaTezina = ref(null);
 const novaKategorija = ref(null);
-const selectedDate = ref(new Date().toISOString().slice(0, 10)); // Postavi današnji datum
+const selectedDate = ref(new Date().toISOString().slice(0, 10));
 const novaDuzinaIzvedbePlana = ref(null);
 const loadingAddProgress = ref(false);
 const povijestNapretka = ref([]);
@@ -258,11 +257,11 @@ const fetchClanData = async () => {
         const response = await axios.get(`http://localhost:3000/api/clan/${parsedClan.oib_clana}`);
         clan.value = { ...response.data.clan };
         originalClan.value = { ...response.data.clan };
-        $q.notify({
-          type: 'positive',
-          message: 'Podaci profila uspješno učitani!',
-          position: 'top'
-        });
+        // $q.notify({ // Uklonjeno: Notifikacija za uspješno učitavanje
+        //   type: 'positive',
+        //   message: 'Podaci profila uspješno učitani!',
+        //   position: 'top'
+        // });
       } catch (error) {
         console.error('Greška pri dohvaćanju podataka člana:', error);
         $q.notify({
@@ -303,11 +302,11 @@ const fetchAktivniPlan = async (oib_clana) => {
   try {
     const response = await axios.get(`http://localhost:3000/api/clanovi/${oib_clana}/aktivni-plan`);
     aktivniPlan.value = response.data.aktivniPlan;
-    $q.notify({
-      type: 'positive',
-      message: 'Aktivni plan uspješno učitan!',
-      position: 'top'
-    });
+    // $q.notify({ // Uklonjeno: Notifikacija za uspješno učitavanje
+    //   type: 'positive',
+    //   message: 'Aktivni plan uspješno učitan!',
+    //   position: 'top'
+    // });
   } catch (error) {
     console.error('Greška pri dohvaćanju aktivnog plana:', error);
     aktivniPlan.value = null;
@@ -329,20 +328,19 @@ const fetchAktivniPlan = async (oib_clana) => {
   }
 };
 
-// NOVA FUNKCIJA: Dohvaćanje povijesti napretka
 const fetchProgressHistory = async (oib_clana) => {
   loadingProgressHistory.value = true;
   try {
     const response = await axios.get(`http://localhost:3000/api/clanovi/${oib_clana}/napredak`);
     povijestNapretka.value = response.data.povijestNapretka;
-    $q.notify({
-      type: 'positive',
-      message: 'Povijest napretka učitana!',
-      position: 'top'
-    });
+    // $q.notify({ // Uklonjeno: Notifikacija za uspješno učitavanje
+    //   type: 'positive',
+    //   message: 'Povijest napretka učitana!',
+    //   position: 'top'
+    // });
   } catch (error) {
     console.error('Greška pri dohvaćanju povijesti napretka:', error);
-    povijestNapretka.value = []; // Postavi na prazan niz ako nema podataka
+    povijestNapretka.value = [];
     if (error.response && error.response.status === 404) {
         $q.notify({
             type: 'info',
@@ -361,7 +359,6 @@ const fetchProgressHistory = async (oib_clana) => {
   }
 };
 
-// NOVA FUNKCIJA: Dodavanje novog unosa napretka
 const addProgress = async () => {
   loadingAddProgress.value = true;
   const oib_clana = clan.value?.oib_clana;
@@ -397,13 +394,11 @@ const addProgress = async () => {
       position: 'top'
     });
 
-    // Osvježi povijest napretka nakon uspješnog dodavanja
     await fetchProgressHistory(oib_clana);
 
-    // Resetiraj formu za unos
     novaTezina.value = null;
     novaKategorija.value = null;
-    selectedDate.value = new Date().toISOString().slice(0, 10); // Postavi današnji datum
+    selectedDate.value = new Date().toISOString().slice(0, 10);
     novaDuzinaIzvedbePlana.value = null;
 
   } catch (error) {
@@ -429,7 +424,7 @@ const saveProfile = async () => {
     });
     return;
   }
-  
+
   if (!clan.value.ime_clana || !clan.value.prezime_clana || !clan.value.email_clana) {
     $q.notify({
       type: 'negative',
@@ -477,7 +472,7 @@ onMounted(async () => {
   await fetchClanData();
   if (clan.value && clan.value.oib_clana) {
     await fetchAktivniPlan(clan.value.oib_clana);
-    await fetchProgressHistory(clan.value.oib_clana); // Dohvati povijest napretka pri učitavanju
+    await fetchProgressHistory(clan.value.oib_clana);
   }
 });
 </script>

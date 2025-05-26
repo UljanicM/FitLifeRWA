@@ -53,11 +53,10 @@ import { useQuasar } from 'quasar';
 
 const $q = useQuasar();
 
-const members = ref([]); // Svi članovi
-const searchTerm = ref(''); // Term za pretraživanje
-const loading = ref(true); // Indikator učitavanja
+const members = ref([]);
+const searchTerm = ref('');
+const loading = ref(true);
 
-// Filtrirani članovi na temelju searchTerma
 const filteredMembers = computed(() => {
   if (!searchTerm.value) {
     return members.value;
@@ -70,17 +69,16 @@ const filteredMembers = computed(() => {
   );
 });
 
-// Funkcija za dohvaćanje članova s backenda
 const fetchMembers = async () => {
   loading.value = true;
   try {
     const response = await axios.get('http://localhost:3000/api/clanovi');
     members.value = response.data.clanovi || [];
-    $q.notify({
-      type: 'positive',
-      message: 'Članovi uspješno učitani!',
-      position: 'top'
-    });
+    // $q.notify({ // Uklonjeno: Notifikacija za uspješno učitavanje
+    //   type: 'positive',
+    //   message: 'Članovi uspješno učitani!',
+    //   position: 'top'
+    // });
   } catch (error) {
     console.error('Greška pri dohvaćanju članova:', error);
     $q.notify({
