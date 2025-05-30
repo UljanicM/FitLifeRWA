@@ -94,9 +94,9 @@ const editedClan = ref({
   ime_clana: '',
   prezime_clana: '',
   email_clana: '',
-  tel_broj_clana: '', // Dodano
-  kilaza: null,       // Dodano
-  kategorija: ''      // Dodano
+  tel_broj_clana: '', 
+  kilaza: null,       
+  kategorija: ''      
 });
 
 // Opcije za kategoriju (možete ih dinamički učitavati ili prilagoditi po potrebi)

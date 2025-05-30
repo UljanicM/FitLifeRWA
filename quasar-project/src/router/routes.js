@@ -35,6 +35,25 @@ const routes = [
         component: () => import('src/pages/PretraziDrugeClanovePage.vue'),
         meta: { requiresAuth: true }
       },
+      {
+        path: 'clan/:oib',
+        name: 'detalji-clana',
+        component: () => import('src/pages/DetaljiClanaPage.vue'),
+        meta: { requiresAuth: true }
+      },
+      {
+        path: 'trainer-profile',
+        name: 'trainer-profile',
+        component: () => import('src/pages/TrainerProfilePage.vue'),
+        meta: { requiresAuth: true, roles: ['trainer'] }
+      },
+      // NOVA RUTA: Unos Plana (samo za trenere)
+      {
+        path: 'unos-plana',
+        name: 'unos-plana',
+        component: () => import('src/pages/UnosPlanaPage.vue'),
+        meta: { requiresAuth: true, roles: ['trainer'] } // Pristup samo za trenere
+      },
     ]
   },
   {
@@ -42,14 +61,12 @@ const routes = [
     component: () => import('layouts/AdminLayout.vue'),
     children: [
       { path: '', component: () => import('pages/AdminPage.vue') },
-      // PROMJENA: Uklonjene rute za vježbe
       { path: 'trazitrenera', component: () => import('pages/PopisTreneraPage.vue') },
-      { path: 'unosvjezbi', component: () => import('src/pages/UnosVjezbiPage.vue') }, // Ostavljeno ako se koristi drugdje
+      { path: 'unosvjezbi', component: () => import('src/pages/UnosVjezbiPage.vue') },
       { path: 'loginpage', component: () => import('src/pages/LoginPage.vue') },
       { path: 'unostrenera', component: () => import('src/pages/UnesiTreneraPage.vue') },
       { path: 'logout', component: () => import('src/pages/LogoutPage.vue') },
-      // NOVA RUTA ZA PREGLED PLANOVA U ADMIN PANELU
-      { path: 'pregledplanova', component: () => import('src/pages/PopisPlanovaPage.vue') }, // Admin koristi istu komponentu za pregled
+      { path: 'pregledplanova', component: () => import('src/pages/PopisPlanovaPage.vue') },
     ]
   },
   {

@@ -20,7 +20,13 @@
       </q-card>
 
       <q-list bordered separator v-if="filteredMembers.length > 0">
-        <q-item v-for="clan in filteredMembers" :key="clan.oib_clana" clickable v-ripple>
+        <q-item
+          v-for="clan in filteredMembers"
+          :key="clan.oib_clana"
+          clickable
+          v-ripple
+          @click="viewMemberDetails(clan.oib_clana)"
+        >
           <q-item-section avatar>
             <q-avatar color="blue-grey" text-color="white" icon="person" />
           </q-item-section>
@@ -50,8 +56,10 @@
 import { ref, onMounted, computed } from 'vue';
 import axios from 'axios';
 import { useQuasar } from 'quasar';
+import { useRouter } from 'vue-router'; // Uvozimo useRouter
 
 const $q = useQuasar();
+const router = useRouter(); // Inicijaliziramo useRouter
 
 const members = ref([]);
 const searchTerm = ref('');
@@ -74,11 +82,6 @@ const fetchMembers = async () => {
   try {
     const response = await axios.get('http://localhost:3000/api/clanovi');
     members.value = response.data.clanovi || [];
-    // $q.notify({ // Uklonjeno: Notifikacija za uspješno učitavanje
-    //   type: 'positive',
-    //   message: 'Članovi uspješno učitani!',
-    //   position: 'top'
-    // });
   } catch (error) {
     console.error('Greška pri dohvaćanju članova:', error);
     $q.notify({
@@ -93,6 +96,11 @@ const fetchMembers = async () => {
 
 const filterMembers = () => {
   // Filtriranje se događa automatski putem computed property 'filteredMembers'
+};
+
+// Nova funkcija za navigaciju na detalje člana
+const viewMemberDetails = (oib) => {
+  router.push({ name: 'detalji-clana', params: { oib: oib } });
 };
 
 onMounted(() => {

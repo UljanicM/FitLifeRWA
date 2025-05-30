@@ -150,7 +150,7 @@ export default {
 
       try {
         const userData = {
-          oib: OIB.value, // Promijenjeno iz 'username' u 'oib' da se podudara s backendom
+          oib: OIB.value, 
           name: imeKorisnika.value,
           prezime: prezimeKorisnika.value,
           email: email.value,
@@ -166,7 +166,7 @@ export default {
           position: 'top'
         });
 
-        // Resetiranje unosa
+        
         imeKorisnika.value = "";
         prezimeKorisnika.value = "";
         OIB.value = "";

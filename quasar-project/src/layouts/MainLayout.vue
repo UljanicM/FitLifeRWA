@@ -64,10 +64,18 @@ const rightDrawerOpen = ref(false);
 const router = useRouter();
 const $q = useQuasar();
 
-const isLoggedIn = ref(false);
+const isLoggedInMember = ref(false);
+const isLoggedInTrainer = ref(false);
+
 
 const updateLoginStatus = () => {
-  isLoggedIn.value = !!localStorage.getItem('clan');
+  const clanData = localStorage.getItem('clan');
+  const trainerData = localStorage.getItem('trainer');
+
+  isLoggedInMember.value = !!clanData;
+  isLoggedInTrainer.value = !!trainerData;
+
+
 };
 
 onMounted(() => {
@@ -77,16 +85,15 @@ onMounted(() => {
 });
 
 const handleLogout = () => {
-  // PROMJENA: Dodan dijaloški okvir za potvrdu odjave
   $q.dialog({
     title: 'Potvrda odjave',
     message: 'Jeste li sigurni da se želite odjaviti?',
-    cancel: 'Ne', // PROMJENA: Labela za otkazivanje je 'Ne'
-    ok: 'Da',     // PROMJENA: Labela za potvrdu je 'Da'
+    cancel: 'Ne',
+    ok: 'Da',
     persistent: true
   }).onOk(() => {
-    // Ako korisnik potvrdi odjavu
     localStorage.removeItem('clan');
+    localStorage.removeItem('trainer'); 
     updateLoginStatus();
     $q.notify({
       type: 'info',
@@ -95,7 +102,6 @@ const handleLogout = () => {
     });
     router.push('/loginpage');
   }).onCancel(() => {
-    // Ako korisnik otkaže odjavu
     $q.notify({
       type: 'info',
       message: 'Odjava otkazana.',
@@ -105,21 +111,29 @@ const handleLogout = () => {
 };
 
 const linksList = computed(() => {
-  const baseLinks = [
-    // Ovdje možete dodati linkove koji su uvijek vidljivi
-  ];
+  const baseLinks = [];
 
-  if (isLoggedIn.value) {
+  
+  if (isLoggedInMember.value) {
+    
     return [
-      ...baseLinks,
       { title: "Naslovnica", icon: "home", link: "/" },
       { title: "Profil", icon: "account_circle", link: "/profil" },
       { title: "Traži trenera", icon: "search", link: "/trazitrenera" },
       { title: "Popis Planova", icon: "assignment", link: "/popisplanova" },
       { title: "Pretraži Druge Članove", icon: "group", link: "/pretrazi-druge-clanove" },
-      { title: "O nama", icon: "info", link: "/onama" },
-      { title: "Lokacija", icon: "location_on", link: "/lokacija" },
       { title: "Pitaj AI", icon: "help", link: "/info" },
+      { title: "O nama", icon: "info", link: "/onama" },
+      { title: "Odjava", icon: "logout", action: handleLogout, isActionItem: true },
+    ];
+  } else if (isLoggedInTrainer.value) {
+    return [
+      ...baseLinks,
+      { title: "Moj Profil", icon: "sports_gymnastics", link: "/trainer-profile" },
+      { title: "Unos Plana", icon: "add_box", link: "/unos-plana" },
+      { title: "Popis Planova", icon: "assignment", link: "/popisplanova" },
+      { title: "Popis Drugih Članova", icon: "group", link: "/pretrazi-druge-clanove" },
+      { title: "Traži trenera", icon: "search", link: "/trazitrenera" },
       { title: "Odjava", icon: "logout", action: handleLogout, isActionItem: true },
     ];
   } else {
@@ -139,7 +153,6 @@ function toggleRightDrawer() {
 </script>
 
 <style>
-/* Vaši stilovi ostaju isti */
 .custom-drawer {
   width: 250px;
   overflow: auto;

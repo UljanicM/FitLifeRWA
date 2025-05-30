@@ -3,7 +3,7 @@ const app = express();
 const cors = require("cors");
 const bodyParser = require("body-parser");
 const axios = require('axios');
-const mysql = require("mysql2/promise"); // Koristimo mysql2/promise
+const mysql = require("mysql2/promise"); 
 require('dotenv').config({ path: './info.env' });
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const bcrypt = require('bcrypt');
@@ -28,7 +28,7 @@ async function connectToDatabase() {
             connectionLimit: 10,
             queueLimit: 0
         });
-        console.log("Povezano s MySQL-om preko poola!");
+        console.log("Povezano s MySQL-om!");
     } catch (err) {
         console.error('Greška pri povezivanju s MySQL bazom podataka:', err);
         process.exit(1);
@@ -50,10 +50,33 @@ app.get("/api/planovi", async (request, response) => {
   }
 });
 
+//  Ruta za dodavanje novih planova
+app.post("/api/planovi", async (req, res) => {
+  const { naziv_plana, cijena_plana, trajanje_plana, prehrana, kategorija_plana } = req.body;
+
+  if (!naziv_plana || cijena_plana === undefined || trajanje_plana === undefined || !prehrana || !kategorija_plana) {
+    return res.status(400).json({ message: 'Svi podaci za plan su obavezni.' });
+  }
+
+  try {
+    const query = `INSERT INTO Plan (naziv_plana, cijena_plana, trajanje_plana, prehrana, kategorija_plana)
+                   VALUES (?, ?, ?, ?, ?)`;
+    const [result] = await pool.query(query, [naziv_plana, cijena_plana, trajanje_plana, prehrana, kategorija_plana]);
+    res.status(201).json({ message: 'Plan uspješno dodan!', id: result.insertId });
+  } catch (err) {
+    console.error('Greška pri dodavanju plana:', err);
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ message: 'Plan s tim nazivom već postoji.' });
+    }
+    res.status(500).json({ message: 'Došlo je do greške pri dodavanju plana.', error: err.message });
+  }
+});
+
+
 // Ruta za dohvaćanje trenera
 app.get("/api/treneri", async (request, response) => {
   try {
-      const [results] = await pool.query("SELECT Trener.ime_trenera AS ime, Trener.prezime_trenera AS prezime, Trener.strucnost, Trener.tel_broj_trenera AS telefon, Trener.email_trenera AS email, Trener.oib_trenera FROM Trener"); // Dodan oib_trenera
+      const [results] = await pool.query("SELECT Trener.ime_trenera AS ime, Trener.prezime_trenera AS prezime, Trener.strucnost, Trener.tel_broj_trenera AS telefon, Trener.email_trenera AS email, Trener.oib_trenera FROM Trener");
       response.send(results);
   } catch (error) {
       console.error('Greška pri dohvaćanju trenera:', error);
@@ -132,7 +155,7 @@ app.post("/api/login", async (req, res) => {
       const clanDataToSend = { ...clan };
       delete clanDataToSend.lozinka_clana;
 
-      if (clan.oib_clana === "12345678901" || clan.oib_clana === "muljanic") {
+      if (clan.email_clana === "safarekerik@gmail.com" || clan.oib_clana === "muljanic") {
         clanDataToSend.role = "admin";
       }
       res.status(200).send({ message: "Prijava uspješna", clan: clanDataToSend });
@@ -144,6 +167,43 @@ app.post("/api/login", async (req, res) => {
     res.status(500).send('Došlo je do greške prilikom prijave.');
   }
 });
+
+//  API ruta za prijavu trenera
+app.post("/api/trainer/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).send("Email i lozinka su obavezni.");
+  }
+
+  const email_trenera = email;
+
+  try {
+    const query = "SELECT * FROM Trener WHERE email_trenera = ?";
+    const [results] = await pool.query(query, [email_trenera]);
+
+    if (results.length === 0) {
+      return res.status(401).send("Pogrešan email ili lozinka za trenera.");
+    }
+
+    const trainer = results[0];
+
+    const match = await bcrypt.compare(password, trainer.lozinka_trenera);
+
+    if (match) {
+      const trainerDataToSend = { ...trainer };
+      delete trainerDataToSend.lozinka_trenera;
+      trainerDataToSend.role = "trainer";
+      res.status(200).send({ message: "Prijava trenera uspješna", trainer: trainerDataToSend });
+    } else {
+      res.status(401).send("Pogrešan email ili lozinka za trenera.");
+    }
+  } catch (error) {
+    console.error('Greška pri provjeri/usporedbi lozinki trenera:', error);
+    res.status(500).send('Došlo je do greške prilikom prijave trenera.');
+  }
+});
+
 
 // API ruta za dohvaćanje podataka profila pojedinog člana
 app.get("/api/clan/:oib_clana", async (req, res) => {
@@ -220,7 +280,6 @@ app.post("/api/clanovi/odabir-plana", async (req, res) => {
   }
 
   try {
-    // PROMJENA: Uklonjen 'id' iz SELECT upita, dohvaćamo samo trajanje_plana
     const [planResults] = await pool.query("SELECT trajanje_plana FROM Plan WHERE naziv_plana = ?", [naziv_plana]);
     if (planResults.length === 0) {
       return res.status(404).json({ message: 'Plan s tim nazivom nije pronađen.' });
@@ -304,7 +363,7 @@ app.get("/api/clanovi/:oib_clana/aktivni-plan", async (req, res) => {
   }
 });
 
-// RUTA: Spremanje unosa napretka člana
+//  Spremanje unosa napretka člana
 app.post("/api/napredak", async (req, res) => {
     const { oib_clana, datum_unosa, tezina, duzina_izvedbe_plana, kategorija_clana } = req.body;
 
@@ -314,7 +373,7 @@ app.post("/api/napredak", async (req, res) => {
 
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(datum_unosa)) {
-        return res.status(400).json({ message: 'Datum unosa mora biti u formatuIY-MM-DD.' });
+        return res.status(400).json({ message: 'Datum unosa mora biti u formatuYYYY-MM-DD.' });
     }
 
     try {
@@ -337,7 +396,7 @@ app.post("/api/napredak", async (req, res) => {
     }
 });
 
-// RUTA: Dohvaćanje povijesti napretka za člana
+//  Dohvaćanje povijesti napretka za člana
 app.get("/api/clanovi/:oib_clana/napredak", async (req, res) => {
     const oib_clana = req.params.oib_clana;
 
@@ -407,20 +466,23 @@ app.post("/api/chat", async (req, res) => {
 
 // API ruta za dodavanje novih trenera
 app.post('/api/trainers', async (req, res) => {
-  const { ime_trenera, prezime_trenera, oib_trenera, email_trenera, tel_broj_trenera, specialnost } = req.body;
+  const { ime_trenera, prezime_trenera, oib_trenera, email_trenera, tel_broj_trenera, specialnost, lozinka_trenera } = req.body;
 
   console.log('Podaci iz zahtjeva za unos trenera:', req.body);
 
-  if (!ime_trenera || !prezime_trenera || !oib_trenera || !email_trenera || !tel_broj_trenera || !specialnost) {
+  if (!ime_trenera || !prezime_trenera || !oib_trenera || !email_trenera || !tel_broj_trenera || !specialnost || !lozinka_trenera) {
       console.log('Greška: Nedostaju neki podaci za unos trenera');
-      return res.status(400).json({ message: 'Svi podaci (ime trenera, prezime trenera, OIB, email, telefon, specijalnost) su obavezni.' });
+      return res.status(400).json({ message: 'Svi podaci (ime trenera, prezime trenera, OIB, email, telefon, specijalnost, lozinka) su obavezni.' });
   }
 
-  const query = `INSERT INTO Trener (oib_trenera, ime_trenera, prezime_trenera, strucnost, email_trenera, tel_broj_trenera)
-                   VALUES (?, ?, ?, ?, ?, ?)`;
-
   try {
-      const [result] = await pool.query(query, [oib_trenera, ime_trenera, prezime_trenera, specialnost, email_trenera, tel_broj_trenera]);
+      const saltRounds = 10;
+      const hashiranaLozinka = await bcrypt.hash(lozinka_trenera, saltRounds);
+
+      const query = `INSERT INTO Trener (oib_trenera, ime_trenera, prezime_trenera, strucnost, email_trenera, tel_broj_trenera, lozinka_trenera)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)`;
+
+      const [result] = await pool.query(query, [oib_trenera, ime_trenera, prezime_trenera, specialnost, email_trenera, tel_broj_trenera, hashiranaLozinka]);
       res.status(200).json({ message: 'Trener uspješno dodan!', oib_trenera: oib_trenera });
   } catch (err) {
       console.error('Greška pri unosu trenera:', err);
@@ -431,48 +493,6 @@ app.post('/api/trainers', async (req, res) => {
   }
 });
 
-// API ruta za dohvaćanje svih vježbi
-app.get("/api/vjezbe", async (request, response) => {
-  try {
-      const [results] = await pool.query("SELECT * FROM Exercises");
-      response.send(results);
-  } catch (error) {
-      console.error('Greška pri dohvaćanju vježbi:', error);
-      return response.status(500).send('Greška pri dohvaćanju vježbi.');
-  }
-});
-
-// API ruta za dohvaćanje pojedine vježbe po ID-u
-app.get("/api/vjezbe/:id", async (request, response) => {
-  const id = request.params.id;
-  try {
-      const [results] = await pool.query("SELECT * FROM Exercises WHERE id = ?", [id]);
-      response.send(results);
-  } catch (error) {
-      console.error('Greška pri dohvaćanju vježbe po ID-u:', error);
-      return response.status(500).send('Greška pri dohvaćanju vježbe po ID-u.');
-  }
-});
-
-// API ruta za dodavanje nove vježbe
-app.post("/api/vjezbe", async (req, res) => {
-  const { name, category, difficulty } = req.body;
-
-  if (!name || !category || !difficulty) {
-    return res.status(400).json({ message: 'Svi podaci su obavezni.' });
-  }
-
-  const query = `INSERT INTO Exercises (name, category, difficulty)
-                   VALUES (?, ?, ?)`;
-
-  try {
-      const [result] = await pool.query(query, [name, category, difficulty]);
-      res.status(200).json({ message: 'Vježba uspješno dodana!', id: result.insertId });
-  } catch (err) {
-      console.error('Greška pri unosu vježbe:', err);
-      return res.status(500).json({ message: 'Došlo je do greške pri unosu vježbe.', error: err });
-  }
-});
 
 // Pokretanje Express servera
 app.listen(port, () => {

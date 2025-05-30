@@ -57,10 +57,10 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useQuasar } from 'quasar'; // Dodano za $q.notify
+import { useQuasar } from 'quasar'; 
 
 const router = useRouter()
-const $q = useQuasar(); // Inicijalizacija Quasar objekta za notifikacije
+const $q = useQuasar(); 
 
 let title = computed(() => {
   return "FitLife admin"
@@ -81,26 +81,26 @@ function toggleRightDrawer() {
 </script>
 
 <style>
-/* Prilagođeni stilovi za Drawer */
+
 .custom-drawer {
-  width: 250px; /* Širina drawera */
-  border-radius: 8px; /* Zaobljeni rubovi */
-  overflow: auto; /* Scroll za prevelik sadržaj */
+  width: 250px; 
+  border-radius: 8px; 
+  overflow: auto; 
 }
 
-/* Stilovi za klikabilne linkove */
+
 .custom-item {
-  display: block; /* Zauzima cijelu širinu */
+  display: block; 
   width: 100%;
 }
 
 .custom-item:hover q-item {
-  background-color: rgba(255, 255, 255, 0.2); /* Pozadinska boja na hover */
+  background-color: rgba(255, 255, 255, 0.2); 
 }
 
-/* Aktivni link */
+
 .active-link q-item {
-  background-color: rgba(255, 255, 255, 0.3); /* Pozadinska boja za aktivan link */
+  background-color: rgba(255, 255, 255, 0.3); 
 }
 
 .no-decoration {

@@ -5,6 +5,20 @@
       <p class="text-center">Unesite svoje podatke za prijavu.</p>
 
       <q-form @submit="loginUser" class="q-gutter-md">
+        <q-radio
+          v-model="loginType"
+          val="member"
+          label="Prijava kao član"
+          color="primary"
+        />
+        <q-radio
+          v-model="loginType"
+          val="trainer"
+          label="Prijava kao trener"
+          color="secondary"
+          class="q-ml-md"
+        />
+
         <q-input
           v-model="email"
           label="Email adresa"
@@ -43,6 +57,7 @@ export default {
 
     const email = ref("");
     const password = ref("");
+    const loginType = ref("member"); // Novo: 'member' ili 'trainer'
     const loginSuccess = ref(false);
 
     const loginUser = async () => {
@@ -52,8 +67,22 @@ export default {
           password: password.value,
         };
 
+        let apiUrl = "";
+        let localStorageKey = "";
+        let redirectPath = "";
+
+        if (loginType.value === "member") {
+          apiUrl = "http://localhost:3000/api/login";
+          localStorageKey = "clan";
+          redirectPath = "/"; // PROMJENA: Preusmjeravanje člana na naslovnicu
+        } else { // loginType.value === "trainer"
+          apiUrl = "http://localhost:3000/api/trainer/login";
+          localStorageKey = "trainer";
+          redirectPath = "/trainer-profile";
+        }
+
         try {
-          const response = await axios.post("http://localhost:3000/api/login", loginData);
+          const response = await axios.post(apiUrl, loginData);
 
           console.log("Prijava uspješna:", response.data);
 
@@ -63,7 +92,8 @@ export default {
             position: 'top'
           });
 
-          localStorage.setItem("clan", JSON.stringify(response.data.clan));
+          // Spremanje korisničkih/trenerovih podataka u localStorage
+          localStorage.setItem(localStorageKey, JSON.stringify(response.data[localStorageKey]));
           
           // Emitiranje custom eventa kako bi se MainLayout ažurirao
           window.dispatchEvent(new Event('auth-change'));
@@ -71,12 +101,12 @@ export default {
           email.value = "";
           password.value = "";
 
-          const clan = response.data.clan;
-          if (clan && clan.role === "admin") {
-            router.push("/admin"); // Administratori i dalje idu na /admin
+          // Specijalna provjera za admina (ako se admin prijavljuje kao član)
+          const loggedInEntity = response.data[localStorageKey];
+          if (loggedInEntity && loggedInEntity.role === "admin") {
+            router.push("/admin");
           } else {
-            // OVDJE JE KLJUČNA PROMJENA: Preusmjeravanje na naslovnicu za obične članove
-            router.push("/"); 
+            router.push(redirectPath);
           }
 
         } catch (error) {
@@ -101,6 +131,7 @@ export default {
     return {
       email,
       password,
+      loginType,
       loginSuccess,
       loginUser,
     };
@@ -109,7 +140,6 @@ export default {
 </script>
 
 <style scoped>
-/* Vaši stilovi ostaju isti */
 .form-container {
   background-color: #fff;
   padding: 30px;
