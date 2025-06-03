@@ -50,7 +50,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import axios from 'axios';
+import { api } from 'boot/axios'; // Promijenjeno: import axios from 'axios' u import { api } from 'boot/axios'
 import { useQuasar } from 'quasar';
 
 const $q = useQuasar();
@@ -74,20 +74,19 @@ const filteredTrainers = computed(() => {
 const fetchTrainers = async () => {
   loading.value = true;
   try {
-    const response = await axios.get('http://localhost:3000/api/treneri');
+    // Promijenjeno: axios.get na api.get i uklonjen baseURL
+    const response = await api.get('/treneri');
     trainers.value = response.data || [];
-    // $q.notify({ // Uklonjeno: Notifikacija za uspješno učitavanje
-    //   type: 'positive',
-    //   message: 'Treneri uspješno učitani!',
-    //   position: 'top'
-    // });
   } catch (error) {
     console.error('Greška pri dohvaćanju trenera:', error);
-    $q.notify({
-      type: 'negative',
-      message: 'Greška pri učitavanju liste trenera.',
-      position: 'top'
-    });
+    // Interceptor će već rukovati 401/403 greškama
+    if (error.response && error.response.status !== 401 && error.response.status !== 403) {
+      $q.notify({
+        type: 'negative',
+        message: 'Greška pri učitavanju liste trenera.',
+        position: 'top'
+      });
+    }
   } finally {
     loading.value = false;
   }

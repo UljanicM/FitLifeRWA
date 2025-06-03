@@ -72,7 +72,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import axios from 'axios';
+import { api } from 'boot/axios'; // Promijenjeno: import axios from 'axios' u import { api } from 'boot/axios'
 import { useQuasar } from 'quasar';
 import { useRoute } from 'vue-router'; 
 
@@ -87,7 +87,8 @@ const loadingProgressHistory = ref(true);
 const fetchClanData = async (oib_clana) => {
   loadingProfile.value = true;
   try {
-    const response = await axios.get(`http://localhost:3000/api/clan/${oib_clana}`);
+    // Promijenjeno: axios.get na api.get i uklonjen baseURL
+    const response = await api.get(`/clan/${oib_clana}`);
     clan.value = response.data.clan;
   } catch (error) {
     console.error('Greška pri dohvaćanju podataka člana:', error);
@@ -105,13 +106,14 @@ const fetchClanData = async (oib_clana) => {
 const fetchProgressHistory = async (oib_clana) => {
   loadingProgressHistory.value = true;
   try {
-    const response = await axios.get(`http://localhost:3000/api/clanovi/${oib_clana}/napredak`);
+    // Promijenjeno: axios.get na api.get i uklonjen baseURL
+    const response = await api.get(`/clanovi/${oib_clana}/napredak`);
     povijestNapretka.value = response.data.povijestNapretka;
   } catch (error) {
     console.error('Greška pri dohvaćanju povijesti napretka:', error);
     povijestNapretka.value = [];
     if (error.response && error.response.status === 404) {
-        
+        // Nema povijesti napretka, to je očekivano za 404
     } else {
         $q.notify({
             type: 'negative',

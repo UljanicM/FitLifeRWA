@@ -54,7 +54,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import axios from 'axios';
+import { api } from 'boot/axios'; // Promijenjeno: import axios from 'axios' u import { api } from 'boot/axios'
 import { useQuasar } from 'quasar';
 import { useRouter } from 'vue-router'; // Uvozimo useRouter
 
@@ -80,15 +80,24 @@ const filteredMembers = computed(() => {
 const fetchMembers = async () => {
   loading.value = true;
   try {
-    const response = await axios.get('http://localhost:3000/api/clanovi');
+    // Promijenjeno: axios.get na api.get i uklonjen baseURL
+    const response = await api.get('/clanovi');
     members.value = response.data.clanovi || [];
-  } catch (error) {
-    console.error('Greška pri dohvaćanju članova:', error);
     $q.notify({
-      type: 'negative',
-      message: 'Greška pri učitavanju liste članova.',
+      type: 'positive',
+      message: 'Članovi uspješno učitani!',
       position: 'top'
     });
+  } catch (error) {
+    console.error('Greška pri dohvaćanju članova:', error);
+    // Interceptor će već rukovati 401/403 greškama
+    if (error.response && error.response.status !== 401 && error.response.status !== 403) {
+      $q.notify({
+        type: 'negative',
+        message: 'Greška pri učitavanju liste članova.',
+        position: 'top'
+      });
+    }
   } finally {
     loading.value = false;
   }

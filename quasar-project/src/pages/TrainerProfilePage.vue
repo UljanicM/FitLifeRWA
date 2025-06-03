@@ -67,16 +67,15 @@
         </q-card-section>
       </q-card>
 
-      </div>
+    </div>
   </q-page>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useQuasar } from 'quasar';
-// axios više nije potreban ovdje za unos plana, ali može biti potreban za dohvaćanje podataka trenera
-// import axios from 'axios'; 
+import { useQuasar, LocalStorage } from 'quasar'; 
+import { api } from 'boot/axios'; 
 
 const router = useRouter();
 const $q = useQuasar();
@@ -84,19 +83,50 @@ const $q = useQuasar();
 const trainer = ref(null);
 
 const redirectToLogin = () => {
-  router.push({ name: 'loginpage' });
+  router.push({ name: 'loginpage' }); // PROMJENA: Koristi 'loginpage' umjesto 'login'
 };
 
-onMounted(() => {
-  const storedTrainerData = localStorage.getItem('trainer');
+const fetchTrainerData = async (oib_trenera) => {
+  try {
+    const response = await api.get(`/treneri/${oib_trenera}`);
+    trainer.value = response.data;
+  } catch (error) {
+    console.error('Greška pri dohvaćanju podataka trenera:', error);
+    if (error.response && error.response.status !== 401 && error.response.status !== 403) {
+      $q.notify({ type: 'negative', message: 'Greška pri učitavanju profila trenera.', position: 'top' });
+    }
+    if (error.response && error.response.status === 404) {
+        $q.notify({ type: 'negative', message: 'Trener nije pronađen.', position: 'top' });
+        redirectToLogin();
+    } else if (!error.response) { 
+        $q.notify({ type: 'negative', message: 'Greška u komunikaciji sa serverom. Molimo pokušajte ponovo.', position: 'top' });
+        redirectToLogin();
+    }
+  }
+};
+
+
+onMounted(async () => {
+  // ******************************************************
+  // PROMJENA OVDJE: Uklonjen JSON.parse()
+  // LocalStorage.getItem() automatski parsira objekte
+  // ******************************************************
+  const storedTrainerData = LocalStorage.getItem('trainer'); 
 
   if (storedTrainerData) {
     try {
-      const parsedData = JSON.parse(storedTrainerData);
-      trainer.value = parsedData;
+      // storedTrainerData je već JavaScript objekt, nema potrebe za JSON.parse()
+      if (storedTrainerData.oib_trenera) {
+        await fetchTrainerData(storedTrainerData.oib_trenera);
+      } else {
+        console.warn('OIB trenera nije pronađen u localStorage-u.');
+        LocalStorage.remove('trainer'); 
+        $q.notify({ type: 'negative', message: 'Podaci o treneru su neispravni. Molimo prijavite se ponovno.' });
+        redirectToLogin();
+      }
     } catch (error) {
-      console.error('Greška pri parsiranju podataka o treneru iz localStorage:', error);
-      localStorage.removeItem('trainer');
+      console.error('Greška pri obradi podataka o treneru iz localStorage:', error); // Promijenjen opis greške
+      LocalStorage.remove('trainer'); 
       $q.notify({ type: 'negative', message: 'Podaci o treneru su neispravni. Molimo prijavite se ponovno.' });
       redirectToLogin();
     }
@@ -105,8 +135,6 @@ onMounted(() => {
     redirectToLogin();
   }
 });
-
-// Uklonjena submitPlan funkcija i newPlan ref
 </script>
 
 <style scoped>

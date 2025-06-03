@@ -82,8 +82,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useQuasar } from 'quasar';
-import axios from 'axios';
+import { useQuasar, LocalStorage } from 'quasar'; 
+import { api } from 'boot/axios'; 
 
 const route = useRoute();
 const router = useRouter();
@@ -95,11 +95,10 @@ const editedClan = ref({
   prezime_clana: '',
   email_clana: '',
   tel_broj_clana: '', 
-  kilaza: null,       
-  kategorija: ''      
+  kilaza: null, 
+  kategorija: '' 
 });
 
-// Opcije za kategoriju (možete ih dinamički učitavati ili prilagoditi po potrebi)
 const kategorijaOptions = ref([
   'Početnik',
   'Rekreativac',
@@ -108,12 +107,10 @@ const kategorijaOptions = ref([
   'Profesionalac'
 ]);
 
-// Funkcija za dohvaćanje podataka o članu
 const fetchClanData = async (oib) => {
   try {
-    const response = await axios.get(`http://localhost:3000/api/clan/${oib}`);
+    const response = await api.get(`/clan/${oib}`);
     const clanData = response.data.clan;
-    // Popunite editedClan s dohvaćenim podacima
     editedClan.value.oib_clana = clanData.oib_clana || '';
     editedClan.value.ime_clana = clanData.ime_clana || '';
     editedClan.value.prezime_clana = clanData.prezime_clana || '';
@@ -123,16 +120,16 @@ const fetchClanData = async (oib) => {
     editedClan.value.kategorija = clanData.kategorija || '';
   } catch (error) {
     console.error('Greška pri dohvaćanju podataka člana:', error);
-    $q.notify({
-      type: 'negative',
-      message: 'Greška pri učitavanju profila.',
-      position: 'top'
-    });
-    router.push('/'); // Preusmjeri na početnu ako je greška
+    if (error.response && error.response.status !== 401 && error.response.status !== 403) {
+      $q.notify({
+        type: 'negative',
+        message: 'Greška pri učitavanju profila.',
+        position: 'top'
+      });
+    }
   }
 };
 
-// Funkcija za ažuriranje profila
 const updateProfile = async () => {
   try {
     const oib = editedClan.value.oib_clana;
@@ -141,7 +138,6 @@ const updateProfile = async () => {
       return;
     }
 
-    // Podaci za slanje na backend
     const dataToSend = {
       ime_clana: editedClan.value.ime_clana,
       prezime_clana: editedClan.value.prezime_clana,
@@ -151,14 +147,18 @@ const updateProfile = async () => {
       kategorija: editedClan.value.kategorija
     };
 
-    const response = await axios.put(`http://localhost:3000/api/clan/${oib}`, dataToSend);
+    const response = await api.put(`/clan/${oib}`, dataToSend);
 
-    // Ažuriraj localStorage sa novim podacima člana (ako je potrebno za prikaz u layoutu)
-    const storedClan = JSON.parse(localStorage.getItem('clan'));
-    if (storedClan && storedClan.oib_clana === response.data.clan.oib_clana) {
-      localStorage.setItem('clan', JSON.stringify(response.data.clan));
-      // Emitiraj globalni događaj da se MainLayout ažurira (ako je potrebno)
-      window.dispatchEvent(new Event('auth-change'));
+    // LocalStorage.getItem() automatski parsira objekte
+    const storedClan = LocalStorage.getItem('clan'); 
+    if (storedClan) {
+      // Provjera da li se ažurirani član podudara s onim u LocalStorageu
+      // LocalStorage.set() automatski stringificira objekte
+      if (storedClan.oib_clana === response.data.clan.oib_clana) {
+        LocalStorage.set('clan', response.data.clan);
+        // Emitiranje globalnog događaja za ažuriranje u MainLayoutu (ako je potrebno)
+        window.dispatchEvent(new Event('auth-change'));
+      }
     }
 
     $q.notify({
@@ -166,36 +166,39 @@ const updateProfile = async () => {
       message: 'Profil uspješno ažuriran!',
       position: 'top'
     });
-    router.push('/profil'); // Vrati se na stranicu profila
+    router.push('/profil');
   } catch (error) {
     console.error('Greška pri ažuriranju profila:', error);
-    $q.notify({
-      type: 'negative',
-      message: error.response && error.response.data
-               ? error.response.data
-               : 'Došlo je do greške pri ažuriranju profila.',
-      position: 'top'
-    });
+    if (error.response && error.response.status !== 401 && error.response.status !== 403) {
+      $q.notify({
+        type: 'negative',
+        message: error.response && error.response.data && error.response.data.message
+                        ? error.response.data.message
+                        : 'Došlo je do greške pri ažuriranju profila.',
+        position: 'top'
+      });
+    }
   }
 };
 
 const cancelEdit = () => {
-  router.push('/profil'); // Vrati se na stranicu profila bez spremanja
+  router.push('/profil');
 };
 
 onMounted(() => {
-  const storedClan = localStorage.getItem('clan');
+  // LocalStorage.getItem() automatski parsira objekte
+  const storedClan = LocalStorage.getItem('clan'); 
   if (storedClan) {
     try {
-      const parsedClan = JSON.parse(storedClan);
-      if (parsedClan.oib_clana) {
-        fetchClanData(parsedClan.oib_clana);
+      // storedClan je već JavaScript objekt, nema potrebe za JSON.parse()
+      if (storedClan.oib_clana) {
+        fetchClanData(storedClan.oib_clana);
       } else {
         $q.notify({ type: 'negative', message: 'OIB člana nije pronađen u lokalnoj pohrani.', position: 'top' });
         router.push('/');
       }
     } catch (e) {
-      console.error("Failed to parse clan data from localStorage", e);
+      console.error("Failed to process clan data from LocalStorage", e); // Promijenjen opis greške
       $q.notify({ type: 'negative', message: 'Podaci o članu su neispravni.', position: 'top' });
       router.push('/');
     }

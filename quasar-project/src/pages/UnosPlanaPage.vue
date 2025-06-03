@@ -63,7 +63,7 @@
 <script setup>
 import { ref } from 'vue';
 import { useQuasar } from 'quasar';
-import axios from 'axios';
+import { api } from 'boot/axios'; // Promijenjeno: import axios from 'axios' u import { api } from 'boot/axios'
 
 const $q = useQuasar();
 
@@ -79,7 +79,8 @@ const loadingPlanSubmit = ref(false);
 const submitPlan = async () => {
   loadingPlanSubmit.value = true;
   try {
-    const response = await axios.post('http://localhost:3000/api/planovi', newPlan.value);
+    // Promijenjeno: axios.post na api.post i uklonjen baseURL
+    const response = await api.post('/planovi', newPlan.value);
     $q.notify({
       type: 'positive',
       message: response.data.message || 'Plan uspješno dodan!',
@@ -95,13 +96,16 @@ const submitPlan = async () => {
     };
   } catch (error) {
     console.error('Greška pri dodavanju plana:', error);
-    $q.notify({
-      type: 'negative',
-      message: error.response && error.response.data && error.response.data.message
-                 ? error.response.data.message
-                 : 'Došlo je do greške pri dodavanju plana.',
-      position: 'top'
-    });
+    // Interceptor će već rukovati 401/403 greškama
+    if (error.response && error.response.status !== 401 && error.response.status !== 403) {
+      $q.notify({
+        type: 'negative',
+        message: error.response && error.response.data && error.response.data.message
+                        ? error.response.data.message
+                        : 'Došlo je do greške pri dodavanju plana.',
+        position: 'top'
+      });
+    }
   } finally {
     loadingPlanSubmit.value = false;
   }

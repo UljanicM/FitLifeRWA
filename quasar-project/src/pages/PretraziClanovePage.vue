@@ -46,10 +46,10 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import axios from 'axios';
+import { api } from 'boot/axios'; // Promijenjeno: import axios from 'axios' u import { api } from 'boot/axios'
 import { useQuasar } from 'quasar';
 
-const $q = useQuasar(); // Ispravljeno: use quasar() -> useQuasar()
+const $q = useQuasar();
 
 const members = ref([]); // Svi članovi
 const searchTerm = ref(''); // Term za pretraživanje
@@ -73,7 +73,8 @@ const filteredMembers = computed(() => {
 const fetchMembers = async () => {
   loading.value = true;
   try {
-    const response = await axios.get('http://localhost:3000/api/clanovi');
+    // Promijenjeno: axios.get na api.get i uklonjen baseURL
+    const response = await api.get('/clanovi');
     members.value = response.data.clanovi || [];
     $q.notify({
       type: 'positive',
@@ -82,11 +83,14 @@ const fetchMembers = async () => {
     });
   } catch (error) {
     console.error('Greška pri dohvaćanju članova:', error);
-    $q.notify({
-      type: 'negative',
-      message: 'Greška pri učitavanju liste članova.',
-      position: 'top'
-    });
+    // Interceptor će već rukovati 401/403 greškama
+    if (error.response && error.response.status !== 401 && error.response.status !== 403) {
+      $q.notify({
+        type: 'negative',
+        message: 'Greška pri učitavanju liste članova.',
+        position: 'top'
+      });
+    }
   } finally {
     loading.value = false;
   }

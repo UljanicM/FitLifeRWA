@@ -2,6 +2,7 @@
 import { route } from 'quasar/wrappers';
 import { createRouter, createMemoryHistory, createWebHistory, createWebHashHistory } from 'vue-router';
 import routes from './routes'; // Uvozimo niz ruta iz './routes.js'
+import { LocalStorage } from 'quasar'; // Uvezite Quasarov LocalStorage
 
 /*
  * If not building with SSR mode, you can
@@ -30,29 +31,39 @@ export default route(function (/* { store, ssrContext } */) {
   Router.beforeEach((to, from, next) => {
     let isAuthenticated = false;
     let userRole = null;
-    let userData = null; // Pomoćna varijabla za pohranu parsiranih podataka
+    let userData = null;
 
-    const storedClan = localStorage.getItem('clan');
-    const storedTrainer = localStorage.getItem('trainer'); // Dohvati i podatke trenera
+    // ******************************************************
+    // KONAČNA PROMJENA OVDJE: Uklonjen JSON.parse()
+    // LocalStorage.getItem() automatski parsira objekte
+    // ******************************************************
+    const storedClan = LocalStorage.getItem('clan'); // Dohvaća već parsirani objekt ili null
+    const storedTrainer = LocalStorage.getItem('trainer'); // Dohvaća već parsirani objekt ili null
+
+    console.log('Router beforeEach: Checking auth...'); // DEBUG LOG
+    console.log('Router beforeEach: storedClan:', storedClan); // DEBUG LOG
+    console.log('Router beforeEach: storedTrainer:', storedTrainer); // DEBUG LOG
 
     if (storedClan) {
       try {
-        userData = JSON.parse(storedClan);
+        userData = storedClan; // storedClan je već JavaScript objekt
         isAuthenticated = true;
         userRole = userData.role || 'member'; // Pretpostavi 'member' ako uloga nije eksplicitno definirana
+        console.log('Router beforeEach: Authenticated as Clan. Role:', userRole); // DEBUG LOG
       } catch (e) {
-        console.error("Greška pri parsiranju podataka člana iz localStorage-a:", e);
-        localStorage.removeItem('clan'); // Očisti neispravne podatke
+        console.error("Router beforeEach: Greška pri obradi podataka člana iz LocalStorage-a:", e);
+        LocalStorage.remove('clan'); // Očisti neispravne podatke
         isAuthenticated = false;
       }
-    } else if (storedTrainer) { // Provjeri trenera samo ako član nije pronađen ili je neispravan
+    } else if (storedTrainer) { 
       try {
-        userData = JSON.parse(storedTrainer);
+        userData = storedTrainer; // storedTrainer je već JavaScript objekt
         isAuthenticated = true;
         userRole = userData.role || 'trainer'; // Pretpostavi 'trainer' ako uloga nije eksplicitno definirana
+        console.log('Router beforeEach: Authenticated as Trainer. Role:', userRole); // DEBUG LOG
       } catch (e) {
-        console.error("Greška pri parsiranju podataka trenera iz localStorage-a:", e);
-        localStorage.removeItem('trainer'); // Očisti neispravne podatke
+        console.error("Router beforeEach: Greška pri obradi podataka trenera iz LocalStorage-a:", e);
+        LocalStorage.remove('trainer'); // Očisti neispravne podatke
         isAuthenticated = false;
       }
     }
@@ -61,30 +72,30 @@ export default route(function (/* { store, ssrContext } */) {
     // Logika za rute koje zahtijevaju prijavu
     if (to.meta.requiresAuth) {
       if (!isAuthenticated) {
-        // Korisnik nije prijavljen, preusmjeri na login stranicu
+        console.log('Router beforeEach: Route requires auth, but not authenticated. Redirecting to login.'); // DEBUG LOG
         next({ name: 'login' });
       } else {
         // Korisnik je prijavljen, sada provjeri uloge ako su specificirane
         if (to.meta.roles && to.meta.roles.length > 0) {
           if (userRole && to.meta.roles.includes(userRole)) {
-            // Korisnik ima potrebnu ulogu, dopusti pristup
+            console.log('Router beforeEach: Authenticated and authorized for role. Proceeding.'); // DEBUG LOG
             next();
           } else {
+            console.warn(`Router beforeEach: Unauthorized role access to route '${to.path}'. Required: ${to.meta.roles.join(', ')}, Current: ${userRole}.`); // DEBUG LOG
             // Korisnik nema potrebnu ulogu, preusmjeri ga na odgovarajuću stranicu
-            console.warn(`Pokušaj pristupa ruti '${to.path}' bez potrebne uloge: ${to.meta.roles}. Trenutna uloga: ${userRole}`);
-            // Preusmjeri na profil za članove, ili admin dashboard za admine, ili početnu stranicu
             if (userRole === 'member') {
               next({ name: 'user-profile' });
             } else if (userRole === 'trainer') {
               next({ name: 'trainer-profile' });
             } else if (userRole === 'admin') {
-              next({ name: 'admin-dashboard' }); // Preusmjeri admina na admin dashboard
+              next({ name: 'admin-dashboard' });
             } else {
-              next({ path: '/' }); // Default preusmjeravanje ako uloga nije prepoznata
+              next({ path: '/' });
             }
           }
         } else {
           // Prijavljen, nema specifičnih uloga, dopusti pristup
+          console.log('Router beforeEach: Authenticated, no specific role required. Proceeding.'); // DEBUG LOG
           next();
         }
       }
@@ -92,6 +103,7 @@ export default route(function (/* { store, ssrContext } */) {
     // Logika za rute koje su samo za neprijavljene korisnike (login, registracija)
     else if (to.meta.guestOnly) {
       if (isAuthenticated) {
+        console.log('Router beforeEach: Guest-only route, but authenticated. Redirecting.'); // DEBUG LOG
         // Korisnik je već prijavljen, preusmjeri ga na odgovarajući dashboard/profil
         if (userRole === 'admin') {
           next({ name: 'admin-dashboard' });
@@ -102,11 +114,13 @@ export default route(function (/* { store, ssrContext } */) {
         }
       } else {
         // Korisnik nije prijavljen, dopusti pristup (login/registracija)
+        console.log('Router beforeEach: Guest-only route, not authenticated. Proceeding.'); // DEBUG LOG
         next();
       }
     }
     // Za sve ostale rute koje nemaju specifična meta polja, dopusti pristup
     else {
+      console.log('Router beforeEach: Public route. Proceeding.'); // DEBUG LOG
       next();
     }
   });

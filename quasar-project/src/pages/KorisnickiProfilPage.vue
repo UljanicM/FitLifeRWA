@@ -225,8 +225,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import axios from 'axios';
-import { useQuasar } from 'quasar';
+import { api } from 'boot/axios';
+import { useQuasar, LocalStorage } from 'quasar';
 import { useRouter } from 'vue-router';
 
 const $q = useQuasar();
@@ -236,8 +236,8 @@ const clan = ref(null);
 const originalClan = ref(null);
 const editMode = ref(false);
 const loadingProfile = ref(true);
-const clanNaPlanuEntry = ref(null); // Preimenovano: aktivniPlan -> clanNaPlanuEntry
-const loadingClanNaPlanuEntry = ref(true); // Preimenovano: loadingActivePlan -> loadingClanNaPlanuEntry
+const clanNaPlanuEntry = ref(null);
+const loadingClanNaPlanuEntry = ref(true);
 
 const novaTezina = ref(null);
 const novaKategorija = ref(null);
@@ -249,24 +249,28 @@ const loadingProgressHistory = ref(true);
 
 const fetchClanData = async () => {
   loadingProfile.value = true;
-  const storedClan = localStorage.getItem('clan');
+  const storedClan = LocalStorage.getItem('clan'); 
+  const token = LocalStorage.getItem('token'); // Dohvati token
+  console.log('KorisnickiProfilPage: Token from LocalStorage:', token); // DEBUG LOG
+  console.log('KorisnickiProfilPage: Stored Clan from LocalStorage:', storedClan); // DEBUG LOG
+
   if (storedClan) {
-    const parsedClan = JSON.parse(storedClan);
+    const parsedClan = storedClan; 
     if (parsedClan.oib_clana) {
       try {
-        const response = await axios.get(`http://localhost:3000/api/clan/${parsedClan.oib_clana}`);
+        console.log('KorisnickiProfilPage: Attempting to fetch clan data for OIB:', parsedClan.oib_clana); // DEBUG LOG
+        const response = await api.get(`/clan/${parsedClan.oib_clana}`);
         clan.value = { ...response.data.clan };
         originalClan.value = { ...response.data.clan };
+        console.log('KorisnickiProfilPage: Clan data fetched successfully.'); // DEBUG LOG
       } catch (error) {
-        console.error('Greška pri dohvaćanju podataka člana:', error);
-        $q.notify({
-          type: 'negative',
-          message: 'Greška pri učitavanju podataka profila.',
-          position: 'top'
-        });
-        if (error.response && error.response.status === 404) {
-          localStorage.removeItem('clan');
-          router.push('/loginpage');
+        console.error('KorisnickiProfilPage: Greška pri dohvaćanju podataka člana:', error); // DEBUG LOG
+        if (error.response && error.response.status !== 401 && error.response.status !== 403) {
+          $q.notify({
+            type: 'negative',
+            message: 'Greška pri učitavanju podataka profila.',
+            position: 'top'
+          });
         }
       } finally {
         loadingProfile.value = false;
@@ -277,7 +281,7 @@ const fetchClanData = async () => {
         message: 'OIB člana nije pronađen u lokalnoj pohrani. Molimo prijavite se ponovo.',
         position: 'top'
       });
-      localStorage.removeItem('clan');
+      LocalStorage.remove('clan');
       router.push('/loginpage');
       loadingProfile.value = false;
     }
@@ -292,39 +296,36 @@ const fetchClanData = async () => {
   }
 };
 
-// Preimenovana funkcija i ažuriran URL/ključ odgovora
 const fetchClanNaPlanuEntry = async (oib_clana) => {
-  loadingClanNaPlanuEntry.value = true; // Koristi novu varijablu
+  loadingClanNaPlanuEntry.value = true;
   try {
-    // Ažuriran URL rute
-    const response = await axios.get(`http://localhost:3000/api/clanovi/${oib_clana}/clan-na-planu`);
-    // Ažuriran ključ odgovora
+    const response = await api.get(`/clanovi/${oib_clana}/clan-na-planu`);
     clanNaPlanuEntry.value = response.data.clanNaPlanuEntry;
   } catch (error) {
-    console.error('Greška pri dohvaćanju unosa plana:', error); // Ažurirana poruka
+    console.error('Greška pri dohvaćanju unosa plana:', error);
     clanNaPlanuEntry.value = null;
     if (error.response && error.response.status === 404) {
         $q.notify({
             type: 'info',
-            message: 'Nemate odabran plan.', // Ažurirana poruka
+            message: 'Nemate odabran plan.',
             position: 'top'
         });
-    } else {
+    } else if (error.response && error.response.status !== 401 && error.response.status !== 403) {
         $q.notify({
             type: 'negative',
-            message: 'Greška pri učitavanju plana.', // Ažurirana poruka
+            message: 'Greška pri učitavanju plana.',
             position: 'top'
         });
     }
   } finally {
-    loadingClanNaPlanuEntry.value = false; // Koristi novu varijablu
+    loadingClanNaPlanuEntry.value = false;
   }
 };
 
 const fetchProgressHistory = async (oib_clana) => {
   loadingProgressHistory.value = true;
   try {
-    const response = await axios.get(`http://localhost:3000/api/clanovi/${oib_clana}/napredak`);
+    const response = await api.get(`/clanovi/${oib_clana}/napredak`);
     povijestNapretka.value = response.data.povijestNapretka;
   } catch (error) {
     console.error('Greška pri dohvaćanju povijesti napretka:', error);
@@ -335,7 +336,7 @@ const fetchProgressHistory = async (oib_clana) => {
             message: 'Nema unosa napretka za prikaz.',
             position: 'top'
         });
-    } else {
+    } else if (error.response && error.response.status !== 401 && error.response.status !== 403) {
         $q.notify({
             type: 'negative',
             message: 'Greška pri učitavanju povijesti napretka.',
@@ -368,7 +369,7 @@ const addProgress = async () => {
   }
 
   try {
-    const response = await axios.post('http://localhost:3000/api/napredak', {
+    const response = await api.post('/napredak', {
       oib_clana: oib_clana,
       datum_unosa: selectedDate.value,
       tezina: novaTezina.value,
@@ -391,13 +392,15 @@ const addProgress = async () => {
 
   } catch (error) {
     console.error('Greška pri dodavanju napretka:', error);
-    $q.notify({
-      type: 'negative',
-      message: error.response && error.response.data && error.response.data.message
-                    ? error.response.data.message
-                    : 'Došlo je do greške pri dodavanju napretka.',
-      position: 'top'
-    });
+    if (error.response && error.response.status !== 401 && error.response.status !== 403) {
+      $q.notify({
+        type: 'negative',
+        message: error.response && error.response.data && error.response.data.message
+                        ? error.response.data.message
+                        : 'Došlo je do greške pri dodavanju napretka.',
+        position: 'top'
+      });
+    }
   } finally {
     loadingAddProgress.value = false;
   }
@@ -423,10 +426,10 @@ const saveProfile = async () => {
   }
 
   try {
-    const response = await axios.put(`http://localhost:3000/api/clan/${clan.value.oib_clana}`, clan.value);
+    const response = await api.put(`/clan/${clan.value.oib_clana}`, clan.value);
     clan.value = { ...response.data.clan };
     originalClan.value = { ...response.data.clan };
-    localStorage.setItem('clan', JSON.stringify(clan.value));
+    LocalStorage.set('clan', clan.value);
     editMode.value = false;
     $q.notify({
       type: 'positive',
@@ -435,13 +438,17 @@ const saveProfile = async () => {
     });
   } catch (error) {
     console.error('Greška pri spremanju profila:', error);
-    $q.notify({
-      type: 'negative',
-      message: error.response && error.response.data && error.response.data.message
-                    ? error.response.data.message
-                    : 'Greška pri spremanju promjena profila.',
-      position: 'top'
-    });
+    if (error.response && error.response.status !== 401 && error.response.status !== 403) {
+      $q.notify({
+        type: 'negative',
+        message: error.response && error.response.data && error.response.data.message
+                        ? error.response.data.message
+                        : 'Greška pri spremanju promjena profila.',
+        position: 'top'
+      });
+    }
+  } finally {
+    // Uklonjeno: ovo je bilo u finally bloku, ali bolje je da se greška prikaže prije
   }
 };
 
@@ -459,7 +466,7 @@ const formatDate = (dateString) => {
 onMounted(async () => {
   await fetchClanData();
   if (clan.value && clan.value.oib_clana) {
-    await fetchClanNaPlanuEntry(clan.value.oib_clana); // Poziva novu funkciju
+    await fetchClanNaPlanuEntry(clan.value.oib_clana);
     await fetchProgressHistory(clan.value.oib_clana);
   }
 });

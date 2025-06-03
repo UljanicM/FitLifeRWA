@@ -1,5 +1,5 @@
 <template>
-  <q-page class="q-pa-md flex justify-center items-center">
+  <q-page padding class="flex flex-center">
     <div class="form-container">
       <h1 class="text-center">Unos Trenera</h1>
       <p class="text-center">Unesite podatke trenera za registraciju.</p>
@@ -67,13 +67,13 @@
         <q-btn label="Unesi trenera" type="submit" color="primary" class="full-width-btn" />
       </q-form>
 
-      </div>
+    </div>
   </q-page>
 </template>
 
 <script>
 import { ref } from 'vue';
-import axios from 'axios';
+import { api } from 'boot/axios'; // Promijenjeno: import axios from 'axios' u import { api } from 'boot/axios'
 import { useQuasar } from 'quasar';
 
 export default {
@@ -87,11 +87,10 @@ export default {
       email_trenera: '',
       tel_broj_trenera: '',
       specialnost: '',
-      lozinka_trenera: '' // NOVO: Dodano polje za lozinku
+      lozinka_trenera: ''
     });
 
     const submitForm = async () => {
-      // Ažurirana validacija da uključuje lozinku
       if (
         trainer.value.ime_trenera &&
         trainer.value.prezime_trenera &&
@@ -99,10 +98,11 @@ export default {
         trainer.value.email_trenera &&
         trainer.value.tel_broj_trenera &&
         trainer.value.specialnost &&
-        trainer.value.lozinka_trenera // Dodana provjera za lozinku
+        trainer.value.lozinka_trenera
       ) {
         try {
-          const response = await axios.post('http://localhost:3000/api/trainers', trainer.value);
+          // Promijenjeno: axios.post na api.post i uklonjen baseURL
+          const response = await api.post('/trainers', trainer.value);
 
           $q.notify({
             type: 'positive',
@@ -124,13 +124,16 @@ export default {
 
         } catch (error) {
           console.error('Greška pri unosu trenera:', error);
-          $q.notify({
-            type: 'negative',
-            message: error.response && error.response.data && error.response.data.message
-                       ? error.response.data.message
-                       : 'Došlo je do greške pri unosu trenera.',
-            position: 'top'
-          });
+          // Interceptor će već rukovati 401/403 greškama
+          if (error.response && error.response.status !== 401 && error.response.status !== 403) {
+            $q.notify({
+              type: 'negative',
+              message: error.response && error.response.data && error.response.data.message
+                                      ? error.response.data.message
+                                      : 'Došlo je do greške pri unosu trenera.',
+              position: 'top'
+            });
+          }
         }
       } else {
         $q.notify({

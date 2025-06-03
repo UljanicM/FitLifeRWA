@@ -45,10 +45,10 @@
 </template>
 
 <script>
-import axios from "axios";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
-import { useQuasar } from 'quasar';
+import { useQuasar, LocalStorage } from 'quasar'; 
+import { api } from 'boot/axios'; 
 
 export default {
   setup() {
@@ -57,8 +57,8 @@ export default {
 
     const email = ref("");
     const password = ref("");
-    const loginType = ref("member"); // Novo: 'member' ili 'trainer'
-    const loginSuccess = ref(false);
+    const loginType = ref("member"); 
+    const loginSuccess = ref(false); 
 
     const loginUser = async () => {
       if (email.value && password.value) {
@@ -67,22 +67,25 @@ export default {
           password: password.value,
         };
 
-        let apiUrl = "";
+        let apiUrlPath = "";
         let localStorageKey = "";
         let redirectPath = "";
+        let responseDataKey = ""; 
 
         if (loginType.value === "member") {
-          apiUrl = "http://localhost:3000/api/login";
+          apiUrlPath = "/login";
           localStorageKey = "clan";
-          redirectPath = "/"; // PROMJENA: Preusmjeravanje člana na naslovnicu
+          redirectPath = "/"; 
+          responseDataKey = "clan";
         } else { // loginType.value === "trainer"
-          apiUrl = "http://localhost:3000/api/trainer/login";
+          apiUrlPath = "/trainer/login";
           localStorageKey = "trainer";
           redirectPath = "/trainer-profile";
+          responseDataKey = "trainer";
         }
 
         try {
-          const response = await axios.post(apiUrl, loginData);
+          const response = await api.post(apiUrlPath, loginData);
 
           console.log("Prijava uspješna:", response.data);
 
@@ -92,17 +95,19 @@ export default {
             position: 'top'
           });
 
-          // Spremanje korisničkih/trenerovih podataka u localStorage
-          localStorage.setItem(localStorageKey, JSON.stringify(response.data[localStorageKey]));
+          // ******************************************************
+          // PROMJENA OVDJE: Uklonjen JSON.stringify()
+          // LocalStorage.set() automatski stringificira objekte
+          // ******************************************************
+          LocalStorage.set('token', response.data.token); 
+          LocalStorage.set(localStorageKey, response.data[responseDataKey]); // Uklonjen JSON.stringify()
           
-          // Emitiranje custom eventa kako bi se MainLayout ažurirao
           window.dispatchEvent(new Event('auth-change'));
 
           email.value = "";
           password.value = "";
 
-          // Specijalna provjera za admina (ako se admin prijavljuje kao član)
-          const loggedInEntity = response.data[localStorageKey];
+          const loggedInEntity = response.data[responseDataKey];
           if (loggedInEntity && loggedInEntity.role === "admin") {
             router.push("/admin");
           } else {
@@ -111,13 +116,15 @@ export default {
 
         } catch (error) {
           console.error("Greška pri prijavi:", error);
-          $q.notify({
-            type: 'negative',
-            message: error.response && error.response.data && error.response.data.message
-                       ? error.response.data.message
-                       : "Došlo je do greške pri prijavi.",
-            position: 'top'
-          });
+          if (error.response && error.response.status !== 401 && error.response.status !== 403) {
+            $q.notify({
+              type: 'negative',
+              message: error.response && error.response.data && error.response.data.message
+                                ? error.response.data.message
+                                : "Došlo je do greške pri prijavi.",
+              position: 'top'
+            });
+          }
         }
       } else {
         $q.notify({

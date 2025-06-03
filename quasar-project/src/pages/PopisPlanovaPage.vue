@@ -20,7 +20,7 @@
       </q-card>
 
       <q-list bordered separator v-if="filteredPlans.length > 0">
-        <q-item v-for="plan in filteredPlans" :key="plan.id">
+        <q-item v-for="plan in filteredPlans" :key="plan.id_plana">
           <q-item-section avatar>
             <q-avatar color="red" text-color="white" icon="fitness_center" />
           </q-item-section>
@@ -34,12 +34,18 @@
           </q-item-section>
 
           <q-item-section side>
+            <!-- Gumb "Odaberi Plan" prikazuje se samo ako korisnik NIJE admin i PRIJAVLJEN je -->
             <q-btn
+              v-if="!isAdmin && isLoggedIn"
               label="Odaberi Plan"
               color="primary"
               @click="openSelectTrainerDialog(plan)"
-              :disable="!isLoggedIn"
+              :disable="loadingSelection"
             />
+            <!-- Opcionalno, možete prikazati poruku za admine -->
+            <q-item-label v-else-if="isAdmin" caption class="text-grey-6">
+              Admin ne može odabrati plan.
+            </q-item-label>
           </q-item-section>
         </q-item>
       </q-list>
@@ -56,6 +62,7 @@
       </q-inner-loading>
     </div>
 
+    <!-- DIJALOG ZA ODABIR TRENERA -->
     <q-dialog v-model="selectTrainerDialog">
       <q-card style="min-width: 350px">
         <q-card-section>
@@ -86,8 +93,8 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
-import axios from 'axios';
-import { useQuasar } from 'quasar';
+import { api } from 'boot/axios';
+import { useQuasar, LocalStorage } from 'quasar';
 import { useRouter } from 'vue-router';
 
 const $q = useQuasar();
@@ -96,18 +103,42 @@ const router = useRouter();
 const plans = ref([]);
 const searchTerm = ref('');
 const loading = ref(true);
-const isLoggedIn = ref(false);
+const isLoggedIn = ref(false); 
+const isAdmin = ref(false); // NOVO: Dodana varijabla za provjeru admin uloge
 
+// Stanja za dijalog odabira trenera
 const selectTrainerDialog = ref(false);
 const selectedPlan = ref(null);
-const trainers = ref([]);
-const selectedTrainerOIB = ref(null);
-const loadingSelection = ref(false);
+const trainers = ref([]); 
+const selectedTrainerOIB = ref(null); 
+const loadingSelection = ref(false); 
 
-const checkLoginStatus = () => {
-  isLoggedIn.value = !!localStorage.getItem('clan');
+// Provjerava status prijave korisnika i ulogu
+const checkLoginStatusAndRole = () => {
+  const storedClan = LocalStorage.getItem('clan');
+  const storedTrainer = LocalStorage.getItem('trainer');
+
+  if (storedClan) {
+    isLoggedIn.value = true;
+    // Provjeri ulogu za člana
+    if (storedClan.role === 'admin') { // Provjera uloge
+      isAdmin.value = true;
+    } else {
+      isAdmin.value = false;
+    }
+  } else if (storedTrainer) {
+    isLoggedIn.value = true;
+    // Treneri također ne bi trebali odabirati planove za sebe na ovoj stranici,
+    // već im je namijenjena administracija ili dodjeljivanje planova drugim članovima.
+    // Stoga ih tretiramo slično kao admine u smislu odabira plana.
+    isAdmin.value = true; // Trenerima također onemogućujemo odabir plana
+  } else {
+    isLoggedIn.value = false;
+    isAdmin.value = false;
+  }
 };
 
+// Computed property za opcije trenera u q-selectu
 const trainerOptions = computed(() => {
   return trainers.value.map(trainer => ({
     label: `${trainer.ime} ${trainer.prezime} (${trainer.strucnost})`,
@@ -132,36 +163,36 @@ const filteredPlans = computed(() => {
 const fetchPlans = async () => {
   loading.value = true;
   try {
-    const response = await axios.get('http://localhost:3000/api/planovi');
+    const response = await api.get('/planovi');
     plans.value = response.data || [];
-    // $q.notify({ // Uklonjeno: Notifikacija za uspješno učitavanje
-    //   type: 'positive',
-    //   message: 'Planovi uspješno učitani!',
-    //   position: 'top'
-    // });
   } catch (error) {
     console.error('Greška pri dohvaćanju planova:', error);
-    $q.notify({
-      type: 'negative',
-      message: 'Greška pri učitavanju liste planova.',
-      position: 'top'
-    });
+    if (error.response && error.response.status !== 401 && error.response.status !== 403) {
+      $q.notify({
+        type: 'negative',
+        message: 'Greška pri učitavanju liste planova.',
+        position: 'top'
+      });
+    }
   } finally {
     loading.value = false;
   }
 };
 
+// Nova funkcija za dohvaćanje trenera
 const fetchTrainers = async () => {
   try {
-    const response = await axios.get('http://localhost:3000/api/treneri');
+    const response = await api.get('/treneri');
     trainers.value = response.data || [];
   } catch (error) {
     console.error('Greška pri dohvaćanju trenera:', error);
-    $q.notify({
-      type: 'negative',
-      message: 'Greška pri učitavanju liste trenera.',
-      position: 'top'
-    });
+    if (error.response && error.response.status !== 401 && error.response.status !== 403) {
+      $q.notify({
+        type: 'negative',
+        message: 'Greška pri učitavanju liste trenera.',
+        position: 'top'
+      });
+    }
   }
 };
 
@@ -169,6 +200,7 @@ const filterPlans = () => {
   // Filtriranje se događa automatski putem computed property 'filteredPlans'
 };
 
+// Otvara dijalog za odabir trenera
 const openSelectTrainerDialog = (plan) => {
   if (!isLoggedIn.value) {
     $q.notify({
@@ -179,11 +211,22 @@ const openSelectTrainerDialog = (plan) => {
     router.push('/loginpage');
     return;
   }
+  // Dodatna provjera: Ako je korisnik admin, spriječite otvaranje dijaloga
+  if (isAdmin.value) {
+    $q.notify({
+      type: 'warning',
+      message: 'Administratori ne mogu odabrati plan na ovoj stranici.',
+      position: 'top'
+    });
+    return;
+  }
+
   selectedPlan.value = plan;
-  selectedTrainerOIB.value = null;
+  selectedTrainerOIB.value = null; 
   selectTrainerDialog.value = true;
 };
 
+// Potvrđuje odabir plana i trenera
 const confirmPlanSelection = async () => {
   if (!selectedTrainerOIB.value) {
     $q.notify({
@@ -195,11 +238,12 @@ const confirmPlanSelection = async () => {
   }
 
   loadingSelection.value = true;
-  const storedClan = localStorage.getItem('clan');
-  if (!storedClan) {
+  const storedClan = LocalStorage.getItem('clan'); 
+
+  if (!storedClan || !storedClan.oib_clana) {
     $q.notify({
       type: 'negative',
-      message: 'Nema podataka o prijavljenom članu.',
+      message: 'Nije moguće pronaći OIB člana. Molimo prijavite se ponovo.',
       position: 'top'
     });
     router.push('/loginpage');
@@ -208,16 +252,13 @@ const confirmPlanSelection = async () => {
   }
 
   try {
-    const clanData = JSON.parse(storedClan);
-    const oib_clana = clanData.oib_clana;
-
     const payload = {
-      oib_clana: oib_clana,
+      oib_clana: storedClan.oib_clana,
       naziv_plana: selectedPlan.value.naziv_plana,
-      oib_trenera: selectedTrainerOIB.value
+      oib_trenera: selectedTrainerOIB.value 
     };
 
-    const response = await axios.post('http://localhost:3000/api/clanovi/odabir-plana', payload);
+    const response = await api.post('/clanovi/odabir-plana', payload);
 
     $q.notify({
       type: 'positive',
@@ -225,27 +266,29 @@ const confirmPlanSelection = async () => {
       position: 'top'
     });
 
-    selectTrainerDialog.value = false;
-    router.push('/profil');
+    selectTrainerDialog.value = false; 
+    router.push('/profil'); 
 
   } catch (error) {
     console.error('Greška pri odabiru plana:', error);
-    $q.notify({
-      type: 'negative',
-      message: error.response && error.response.data && error.response.data.message
-                 ? error.response.data.message
-                 : 'Došlo je do greške pri odabiru plana.',
-      position: 'top'
-    });
+    if (error.response && error.response.status !== 401 && error.response.status !== 403) {
+      $q.notify({
+        type: 'negative',
+        message: error.response && error.response.data && error.response.data.message
+                        ? error.response.data.message
+                        : 'Došlo je do greške pri odabiru plana.',
+        position: 'top'
+      });
+    }
   } finally {
     loadingSelection.value = false;
   }
 };
 
 onMounted(async () => {
-  checkLoginStatus();
+  checkLoginStatusAndRole(); // Provjeri status prijave i ulogu pri montiranju
   await fetchPlans();
-  await fetchTrainers();
+  await fetchTrainers(); 
 });
 </script>
 
