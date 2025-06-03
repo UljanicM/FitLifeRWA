@@ -77,35 +77,35 @@
         </q-card-actions>
       </q-card>
 
-      <q-card v-if="aktivniPlan" class="my-card q-mt-md">
+      <q-card v-if="clanNaPlanuEntry" class="my-card q-mt-md">
         <q-card-section>
-          <div class="text-h6">Vaš aktivni plan</div>
+          <div class="text-h6">Vaš plan</div>
         </q-card-section>
         <q-card-section>
           <q-list dense bordered class="rounded-borders">
             <q-item>
               <q-item-section>
                 <q-item-label caption>Naziv plana:</q-item-label>
-                <q-item-label>{{ aktivniPlan.naziv_plana }}</q-item-label>
+                <q-item-label>{{ clanNaPlanuEntry.naziv_plana }}</q-item-label>
               </q-item-section>
             </q-item>
             <q-item>
               <q-item-section>
                 <q-item-label caption>Datum početka:</q-item-label>
-                <q-item-label>{{ formatDate(aktivniPlan.datum_pocetka_plana) }}</q-item-label>
+                <q-item-label>{{ formatDate(clanNaPlanuEntry.datum_pocetka_plana) }}</q-item-label>
               </q-item-section>
             </q-item>
             <q-item>
               <q-item-section>
                 <q-item-label caption>Datum isteka:</q-item-label>
-                <q-item-label>{{ formatDate(aktivniPlan.datum_isteka_plana) }}</q-item-label>
+                <q-item-label>{{ formatDate(clanNaPlanuEntry.datum_isteka_plana) }}</q-item-label>
               </q-item-section>
             </q-item>
           </q-list>
         </q-card-section>
       </q-card>
 
-      <q-card v-if="aktivniPlan && aktivniPlan.ime_trenera" class="my-card q-mt-md">
+      <q-card v-if="clanNaPlanuEntry && clanNaPlanuEntry.ime_trenera" class="my-card q-mt-md">
         <q-card-section>
           <div class="text-h6">Dodijeljeni Trener</div>
         </q-card-section>
@@ -114,35 +114,35 @@
             <q-item>
               <q-item-section>
                 <q-item-label caption>Ime trenera:</q-item-label>
-                <q-item-label>{{ aktivniPlan.ime_trenera }} {{ aktivniPlan.prezime_trenera }}</q-item-label>
+                <q-item-label>{{ clanNaPlanuEntry.ime_trenera }} {{ clanNaPlanuEntry.prezime_trenera }}</q-item-label>
               </q-item-section>
             </q-item>
             <q-item>
               <q-item-section>
                 <q-item-label caption>Stručnost:</q-item-label>
-                <q-item-label>{{ aktivniPlan.strucnost }}</q-item-label>
+                <q-item-label>{{ clanNaPlanuEntry.strucnost }}</q-item-label>
               </q-item-section>
             </q-item>
             <q-item>
               <q-item-section>
                 <q-item-label caption>Email trenera:</q-item-label>
-                <q-item-label>{{ aktivniPlan.email_trenera }}</q-item-label>
+                <q-item-label>{{ clanNaPlanuEntry.email_trenera }}</q-item-label>
               </q-item-section>
             </q-item>
             <q-item>
               <q-item-section>
                 <q-item-label caption>Telefon trenera:</q-item-label>
-                <q-item-label>{{ aktivniPlan.tel_broj_trenera }}</q-item-label>
+                <q-item-label>{{ clanNaPlanuEntry.tel_broj_trenera }}</q-item-label>
               </q-item-section>
             </q-item>
           </q-list>
         </q-card-section>
       </q-card>
 
-      <q-card v-if="!aktivniPlan && !loadingActivePlan" class="my-card q-mt-md">
+      <q-card v-if="!clanNaPlanuEntry && !loadingClanNaPlanuEntry" class="my-card q-mt-md">
         <q-card-section class="text-center text-grey-7">
           <q-icon name="info" size="xl" class="q-mb-md" />
-          <div class="text-subtitle1">Trenutno nemate aktivan plan.</div>
+          <div class="text-subtitle1">Trenutno nemate odabran plan.</div>
           <q-btn label="Odaberite plan" color="primary" class="q-mt-md" to="/popisplanova" />
         </q-card-section>
       </q-card>
@@ -215,7 +215,7 @@
         </q-card-section>
       </q-card>
 
-      <q-inner-loading :showing="loadingProfile || loadingActivePlan || loadingProgressHistory">
+      <q-inner-loading :showing="loadingProfile || loadingClanNaPlanuEntry || loadingProgressHistory">
         <q-spinner-gears size="50px" color="teal" />
         <p class="q-mt-md">Učitavanje podataka...</p>
       </q-inner-loading>
@@ -236,8 +236,8 @@ const clan = ref(null);
 const originalClan = ref(null);
 const editMode = ref(false);
 const loadingProfile = ref(true);
-const aktivniPlan = ref(null);
-const loadingActivePlan = ref(true);
+const clanNaPlanuEntry = ref(null); // Preimenovano: aktivniPlan -> clanNaPlanuEntry
+const loadingClanNaPlanuEntry = ref(true); // Preimenovano: loadingActivePlan -> loadingClanNaPlanuEntry
 
 const novaTezina = ref(null);
 const novaKategorija = ref(null);
@@ -257,11 +257,6 @@ const fetchClanData = async () => {
         const response = await axios.get(`http://localhost:3000/api/clan/${parsedClan.oib_clana}`);
         clan.value = { ...response.data.clan };
         originalClan.value = { ...response.data.clan };
-        // $q.notify({ // Uklonjeno: Notifikacija za uspješno učitavanje
-        //   type: 'positive',
-        //   message: 'Podaci profila uspješno učitani!',
-        //   position: 'top'
-        // });
       } catch (error) {
         console.error('Greška pri dohvaćanju podataka člana:', error);
         $q.notify({
@@ -297,34 +292,32 @@ const fetchClanData = async () => {
   }
 };
 
-const fetchAktivniPlan = async (oib_clana) => {
-  loadingActivePlan.value = true;
+// Preimenovana funkcija i ažuriran URL/ključ odgovora
+const fetchClanNaPlanuEntry = async (oib_clana) => {
+  loadingClanNaPlanuEntry.value = true; // Koristi novu varijablu
   try {
-    const response = await axios.get(`http://localhost:3000/api/clanovi/${oib_clana}/aktivni-plan`);
-    aktivniPlan.value = response.data.aktivniPlan;
-    // $q.notify({ // Uklonjeno: Notifikacija za uspješno učitavanje
-    //   type: 'positive',
-    //   message: 'Aktivni plan uspješno učitan!',
-    //   position: 'top'
-    // });
+    // Ažuriran URL rute
+    const response = await axios.get(`http://localhost:3000/api/clanovi/${oib_clana}/clan-na-planu`);
+    // Ažuriran ključ odgovora
+    clanNaPlanuEntry.value = response.data.clanNaPlanuEntry;
   } catch (error) {
-    console.error('Greška pri dohvaćanju aktivnog plana:', error);
-    aktivniPlan.value = null;
+    console.error('Greška pri dohvaćanju unosa plana:', error); // Ažurirana poruka
+    clanNaPlanuEntry.value = null;
     if (error.response && error.response.status === 404) {
         $q.notify({
             type: 'info',
-            message: 'Nemate aktivan plan.',
+            message: 'Nemate odabran plan.', // Ažurirana poruka
             position: 'top'
         });
     } else {
         $q.notify({
             type: 'negative',
-            message: 'Greška pri učitavanju aktivnog plana.',
+            message: 'Greška pri učitavanju plana.', // Ažurirana poruka
             position: 'top'
         });
     }
   } finally {
-    loadingActivePlan.value = false;
+    loadingClanNaPlanuEntry.value = false; // Koristi novu varijablu
   }
 };
 
@@ -333,11 +326,6 @@ const fetchProgressHistory = async (oib_clana) => {
   try {
     const response = await axios.get(`http://localhost:3000/api/clanovi/${oib_clana}/napredak`);
     povijestNapretka.value = response.data.povijestNapretka;
-    // $q.notify({ // Uklonjeno: Notifikacija za uspješno učitavanje
-    //   type: 'positive',
-    //   message: 'Povijest napretka učitana!',
-    //   position: 'top'
-    // });
   } catch (error) {
     console.error('Greška pri dohvaćanju povijesti napretka:', error);
     povijestNapretka.value = [];
@@ -406,8 +394,8 @@ const addProgress = async () => {
     $q.notify({
       type: 'negative',
       message: error.response && error.response.data && error.response.data.message
-                 ? error.response.data.message
-                 : 'Došlo je do greške pri dodavanju napretka.',
+                    ? error.response.data.message
+                    : 'Došlo je do greške pri dodavanju napretka.',
       position: 'top'
     });
   } finally {
@@ -450,8 +438,8 @@ const saveProfile = async () => {
     $q.notify({
       type: 'negative',
       message: error.response && error.response.data && error.response.data.message
-                 ? error.response.data.message
-                 : 'Greška pri spremanju promjena profila.',
+                    ? error.response.data.message
+                    : 'Greška pri spremanju promjena profila.',
       position: 'top'
     });
   }
@@ -471,7 +459,7 @@ const formatDate = (dateString) => {
 onMounted(async () => {
   await fetchClanData();
   if (clan.value && clan.value.oib_clana) {
-    await fetchAktivniPlan(clan.value.oib_clana);
+    await fetchClanNaPlanuEntry(clan.value.oib_clana); // Poziva novu funkciju
     await fetchProgressHistory(clan.value.oib_clana);
   }
 });
