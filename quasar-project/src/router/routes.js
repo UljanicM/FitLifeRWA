@@ -10,7 +10,12 @@ const routes = [
       { path: 'lokacija', component: () => import('src/pages/LokacijaPage.vue') },
       { path: 'loginpage', component: () => import('src/pages/LoginPage.vue') },
       { path: 'registracija', component: () => import('src/pages/RegistracijaPage.vue') },
-      { path: 'info', component: () => import('src/pages/PitajPage.vue') },
+      {
+        path: 'info',
+        name: 'PitajPage', // Ensure this route has a name
+        component: () => import('pages/PitajPage.vue'),
+        meta: { requiresAuth: true } // THIS IS THE IMPORTANT PART
+      },
 
       // Ruta 'trazitrenera' sada zahtijeva prijavu
       {

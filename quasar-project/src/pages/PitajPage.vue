@@ -1,8 +1,7 @@
 <template>
   <q-page class="q-pa-md">
     <div class="q-pa-lg">
-      <h4 class="text-center">Pitaj ChatGPT</h4>
-      <!-- Polje za unos pitanja -->
+      <h4 class="text-center">Pitaj AI</h4>
       <q-input
         v-model="userQuestion"
         label="Unesite svoje pitanje"
@@ -12,15 +11,14 @@
       />
 
       <div class="q-pa-lg centar">
-        <q-btn 
+        <q-btn
           label="Pošalji"
           color="primary"
-          class=" text-align-center"
+          class="text-align-center"
           @click="postQuestion"
         />
       </div>
 
-      <!-- Prikaz odgovora -->
       <div v-if="response" class="q-mt-lg">
         <h4 class="text-center">Odgovor:</h4>
         <q-card class="q-pa-md bg-grey-2">
@@ -30,7 +28,6 @@
         </q-card>
       </div>
 
-      <!-- Prikaz grešaka -->
       <div v-if="error" class="q-mt-lg text-negative">
         <q-icon name="warning" class="q-mr-sm" />
         {{ error }}
@@ -40,12 +37,16 @@
 </template>
 
 <script>
-import { ref } from "vue";
-import axios from "axios";
+import { ref, getCurrentInstance } from "vue"; // Import getCurrentInstance
+// Removed direct axios import as we will use the global $api instance
+// import axios from "axios";
 
 export default {
   name: "PitajPage",
   setup() {
+    const app = getCurrentInstance(); // Get the current Vue application instance
+    const $api = app.appContext.config.globalProperties.$api; // Access the global $api instance
+
     const userQuestion = ref(""); // Pitanje korisnika
     const response = ref(""); // Odgovor iz API-ja
     const error = ref(null); // Greška
@@ -60,14 +61,19 @@ export default {
         error.value = null; // Reset grešaka
         response.value = ""; // Reset odgovora
 
-        const res = await axios.post("http://localhost:3000/api/chat", {
+        // *** CHANGE HERE: Use the global $api instance instead of direct axios ***
+        const res = await $api.post("/chat", { // Base URL 'http://localhost:3000/api' is already set in axios.js
           message: userQuestion.value,
         });
 
         response.value = res.data.content; // Postavljanje odgovora
       } catch (err) {
-        console.error(err);
-        error.value = "Dogodila se greška prilikom povezivanja s API-jem.";
+        console.error("Greška pri pozivanju AI API-ja:", err.response || err);
+        if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+          error.value = "Nemate dozvolu ili vaša sesija je istekla. Molimo prijavite se ponovo.";
+        } else {
+          error.value = "Dogodila se greška prilikom povezivanja s AI API-jem.";
+        }
       }
     };
 
@@ -91,6 +97,6 @@ export default {
   justify-content: center;
   align-items: center;
   width: 100%;
-  
+
 }
 </style>

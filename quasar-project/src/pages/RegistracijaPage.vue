@@ -7,6 +7,7 @@
         <q-input
           v-model="imeKorisnika"
           label="Ime"
+          data-cy="registracija-ime-input"
           filled
           class="q-mb-md"
           :dense="true"
@@ -16,6 +17,7 @@
         <q-input
           v-model="prezimeKorisnika"
           label="Prezime"
+          data-cy="registracija-prezime-input"
           filled
           class="q-mb-md"
           :dense="true"
@@ -25,6 +27,7 @@
         <q-input
           v-model="OIB"
           label="OIB"
+          data-cy="registracija-oib-input"
           filled
           class="q-mb-md"
           :dense="true"
@@ -38,6 +41,7 @@
           v-model="email"
           label="Email"
           type="email"
+          data-cy="registracija-email-input"
           filled
           class="q-mb-md"
           :dense="true"
@@ -51,6 +55,7 @@
           v-model="lozinka"
           label="Lozinka"
           type="password"
+          data-cy="registracija-lozinka-input"
           filled
           class="q-mb-md"
           :dense="true"
@@ -66,6 +71,7 @@
           v-model="potvrdaLozinke"
           label="Potvrdite lozinku"
           type="password"
+          data-cy="registracija-potvrda-lozinke-input"
           filled
           class="q-mb-md"
           :dense="true"
@@ -79,6 +85,7 @@
           label="Registriraj se"
           color="primary"
           class="full-width q-mt-md"
+          data-cy="registracija-submit-btn"
           :loading="isLoading"
         />
 
@@ -110,6 +117,7 @@ export default {
     const registerUser = async () => {
       isLoading.value = true;
 
+      // Validacija na klijentskoj strani (već postoji u pravilima q-inputa, ali dupla provjera ne škodi)
       if (
         !imeKorisnika.value ||
         !prezimeKorisnika.value ||
@@ -147,16 +155,18 @@ export default {
         isLoading.value = false;
         return;
       }
+      // Kraj validacije
 
       try {
         const userData = {
-          oib: OIB.value, 
+          oib: OIB.value,
           name: imeKorisnika.value,
           prezime: prezimeKorisnika.value,
           email: email.value,
           password: lozinka.value
         };
 
+        // Preporuka: Koristi instancu axiosa definiranu u boot datoteci ako je imaš (npr. api.post)
         const response = await axios.post("http://localhost:3000/api/registracija", userData);
         console.log("Korisnik registriran:", response.data);
 
@@ -166,7 +176,7 @@ export default {
           position: 'top'
         });
 
-        
+        // Resetiraj polja
         imeKorisnika.value = "";
         prezimeKorisnika.value = "";
         OIB.value = "";
@@ -180,7 +190,12 @@ export default {
         let message = "Došlo je do neočekivane greške pri slanju podataka.";
 
         if (error.response && error.response.data) {
-          message = error.response.data;
+          // Ako backend vrati string kao poruku (što tvoj radi za neke greške)
+          if (typeof error.response.data === 'string') {
+            message = error.response.data;
+          } else if (error.response.data.message) { // Ako backend vrati objekt s 'message' propertyjem
+            message = error.response.data.message;
+          }
         } else if (error.request) {
           message = "Nije moguće kontaktirati server. Provjerite svoju internet vezu.";
         }
