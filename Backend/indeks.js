@@ -1,11 +1,9 @@
-// Backend/indeks.js
-console.log('--- Pokrećem indeks.js ---'); // NOVI LOG
+
+console.log('--- Pokrećem indeks.js ---');
 
 const express = require("express");
-const app = express(); // Ovdje definiramo app
+const app = express(); 
 const cors = require("cors");
-// Greška u originalnom kodu, treba biti require('body-parser')
-// const bodyParser = "body-parser"; // ZAKOMENTIRANO - ISPRAVLJENO ISPOD
 const axios = require('axios');
 const mysql = require("mysql2/promise");
 require('dotenv').config({ path: './info.env' });
@@ -13,25 +11,24 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
-// Dohvati JWT tajni ključ iz .env datoteke
+// Dohvati JWT 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
     console.error('!!! Greška: JWT_SECRET nije definiran u info.env datoteci! Backend se možda neće ispravno pokrenuti ili autentifikacija neće raditi.');
-    // U testnom okruženju nećemo nužno prekidati aplikaciju, Jest će prijaviti grešku
-    // process.exit(1); // Razmisli želiš li prekidati aplikaciju ovdje u produkciji
+
 } else {
     console.log('--- JWT_SECRET uspješno učitan. ---');
 }
 
 app.use(cors({"origin": "*"}));
 
-// Ispravak za bodyParser
+
 const actualBodyParser = require('body-parser');
 app.use(actualBodyParser.json());
 app.use(actualBodyParser.urlencoded({ extended: true }));
 console.log('--- Middleware (cors, bodyParser) postavljen. ---');
 
-let pool; // Definiramo pool varijablu
+let pool; 
 
 async function connectToDatabase() {
     console.log('--- Ulazim u connectToDatabase ---');
@@ -56,29 +53,26 @@ async function connectToDatabase() {
         pool = await mysql.createPool({
             host: process.env.DB_HOST || 'ucka.veleri.hr',
             user: process.env.DB_USER || 'muljanic',
-            password: process.env.DB_PASSWORD || '11', // Lozinka se ne logira iz sigurnosnih razloga
+            password: process.env.DB_PASSWORD || '11', 
             database: process.env.DB_NAME || 'muljanic',
             waitForConnections: true,
             connectionLimit: 10,
             queueLimit: 0
         });
-        console.log("Povezano s MySQL-om!"); // POSTOJEĆI LOG
+        console.log("Povezano s MySQL-om!"); 
         console.log('--- connectToDatabase: Uspješno spojeno na bazu. ---');
         return pool;
     } catch (err) {
         console.error('!!! Greška u connectToDatabase pri povezivanju s bazom podataka !!!:', err.message);
         console.error('Stack trace greške iz connectToDatabase:', err.stack);
-        // U testnom okruženju, Jest će uhvatiti ovu grešku ako se dogodi
         if (process.env.NODE_ENV !== 'test') {
             console.log('--- connectToDatabase: Izlazim iz procesa zbog greške u spajanju na bazu (non-test env). ---');
             process.exit(1);
         }
-        throw err; // Ponovno baci grešku da je testovi mogu uhvatiti
+        throw err; 
     }
 }
 
-// Izvozimo funkciju kako bismo je mogli pozvati u server.js ili mockati u testovima
-// connectToDatabase(); // Ne pozivamo odmah, nego u server.js
 console.log('--- connectToDatabase funkcija definirana. ---');
 
 app.use(express.urlencoded({ extended: true }));
@@ -86,9 +80,9 @@ console.log('--- Middleware (express.urlencoded) postavljen. ---');
 
 // Middleware za provjeru JWT-a i autentifikaciju
 function authenticateToken(req, res, next) {
-    // console.log('--- authenticateToken middleware pozvan. NODE_ENV:', process.env.NODE_ENV); // Manje bučan log
+
     if (process.env.NODE_ENV === 'test') {
-        // console.log('--- authenticateToken: Testno okruženje, preskačem autentifikaciju, postavljam mock usera. ---');
+
         req.user = { role: 'admin', oib: 'test-oib' };
         return next();
     }
@@ -97,17 +91,17 @@ function authenticateToken(req, res, next) {
     const token = authHeader && authHeader.split(' ')[1];
 
     if (token == null) {
-        // console.log('--- authenticateToken: Token nije pronađen. Status 401. ---');
+
         return res.status(401).json({ message: 'Autorizacijski token nije pronađen.' });
     }
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
         if (err) {
-            // console.error('--- authenticateToken: Greška pri verifikaciji tokena. Status 403. ---', err.message);
+
             return res.status(403).json({ message: 'Token je nevažeći ili istekao.' });
         }
         req.user = user;
-        // console.log('--- authenticateToken: Token uspješno verificiran. User:', user.oib, user.role);
+
         next();
     });
 }
@@ -116,16 +110,16 @@ console.log('--- authenticateToken middleware definiran. ---');
 // Middleware za provjeru uloge
 function authorizeRole(roles) {
     return (req, res, next) => {
-        // console.log('--- authorizeRole middleware pozvan. User role:', req.user?.role, 'Required roles:', roles);
+
         if (!req.user || !req.user.role) {
-            // console.log('--- authorizeRole: Nema informacija o ulozi. Status 403. ---');
+
             return res.status(403).json({ message: 'Nema informacija o ulozi korisnika u tokenu.' });
         }
         if (!roles.includes(req.user.role)) {
-            // console.log('--- authorizeRole: Korisnik nema potrebnu ulogu. Status 403. ---');
+
             return res.status(403).json({ message: `Nemate potrebnu ulogu (${roles.join(', ')}) za pristup ovoj ruti.` });
         }
-        // console.log('--- authorizeRole: Korisnik autoriziran za ulogu. ---');
+
         next();
     };
 }
@@ -134,9 +128,9 @@ console.log('--- authorizeRole middleware definiran. ---');
 // --- API RUTE ---
 console.log('--- Definiranje API ruta... ---');
 
-// Ruta za dohvaćanje planova (ZAŠTIĆENA)
+// Ruta za dohvaćanje planova
 app.get("/api/planovi", authenticateToken, async (request, response) => {
-    // console.log('--- GET /api/planovi pozvan ---');
+    
     try {
         if (!pool) {
             console.error('Backend GET /api/planovi: Pool nije inicijaliziran.');
@@ -150,9 +144,9 @@ app.get("/api/planovi", authenticateToken, async (request, response) => {
     }
 });
 
-// Ruta za dodavanje novih planova (ZAŠTIĆENA, SAMO ZA ADMINA ILI TRENERA)
+// Ruta za dodavanje novih planova 
 app.post("/api/planovi", authenticateToken, authorizeRole(['admin', 'trainer']), async (req, res) => {
-    // console.log('--- POST /api/planovi pozvan ---');
+
     const { naziv_plana, cijena_plana, trajanje_plana, prehrana, kategorija_plana } = req.body;
 
     if (!naziv_plana || cijena_plana === undefined || trajanje_plana === undefined || !prehrana || !kategorija_plana) {
@@ -177,9 +171,9 @@ app.post("/api/planovi", authenticateToken, authorizeRole(['admin', 'trainer']),
 });
 
 
-// Ruta za dohvaćanje trenera (ZAŠTIĆENA)
+// Ruta za dohvaćanje trenera 
 app.get("/api/treneri", authenticateToken, async (request, response) => {
-    // console.log('--- GET /api/treneri pozvan ---');
+
     if (!pool) {
         console.error('Backend GET /api/treneri: Pool nije inicijaliziran.');
         return response.status(500).send('Greška servera: Baza podataka nije dostupna.');
@@ -193,9 +187,9 @@ app.get("/api/treneri", authenticateToken, async (request, response) => {
     }
 });
 
-// Ruta za dohvaćanje pojedinog trenera po OIB-u (ZAŠTIĆENA)
+// Ruta za dohvaćanje pojedinog trenera po OIB-u 
 app.get("/api/treneri/:oib_trenera", authenticateToken, async (request, response) => {
-    // console.log(`--- GET /api/treneri/${request.params.oib_trenera} pozvan ---`);
+
     const oib_trenera = request.params.oib_trenera;
      if (!pool) {
         console.error(`Backend GET /api/treneri/${oib_trenera}: Pool nije inicijaliziran.`);
@@ -213,9 +207,9 @@ app.get("/api/treneri/:oib_trenera", authenticateToken, async (request, response
     }
 });
 
-// API endpoint za registraciju člana (JAVNA)
+// API endpoint za registraciju člana 
 app.post("/api/registracija", async (req, res) => {
-    // console.log('--- POST /api/registracija pozvan ---');
+
     const { oib, email, name, password, prezime } = req.body;
 
     const oib_clana = oib;
@@ -247,9 +241,9 @@ app.post("/api/registracija", async (req, res) => {
     }
 });
 
-// API ruta za prijavu člana (JAVNA - sada izdaje JWT)
+// API ruta za prijavu člana 
 app.post("/api/login", async (req, res) => {
-    // console.log('--- POST /api/login pozvan ---');
+
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -277,7 +271,7 @@ app.post("/api/login", async (req, res) => {
             delete clanDataToSend.lozinka_clana;
 
             let role = "member";
-            // Hardkodirano dodjeljivanje admin uloge na temelju emaila
+
             if (clan.email_clana === "safarekerik@gmail.com" || clan.email_clana === "muljanic@gmail.com") {
                 role = "admin";
             }
@@ -285,7 +279,7 @@ app.post("/api/login", async (req, res) => {
 
             const token = jwt.sign(
                 { oib: clan.oib_clana, email: clan.email_clana, role: role },
-                JWT_SECRET, // Osiguraj da je JWT_SECRET definiran
+                JWT_SECRET, 
                 { expiresIn: '1h' }
             );
             res.status(200).send({ message: "Prijava uspješna", clan: clanDataToSend, token: token });
@@ -298,9 +292,9 @@ app.post("/api/login", async (req, res) => {
     }
 });
 
-// API ruta za prijavu trenera (JAVNA - sada izdaje JWT)
+// API ruta za prijavu trenera 
 app.post("/api/trainer/login", async (req, res) => {
-    // console.log('--- POST /api/trainer/login pozvan ---');
+
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -330,7 +324,7 @@ app.post("/api/trainer/login", async (req, res) => {
 
             const token = jwt.sign(
                 { oib: trainer.oib_trenera, email: trainer.email_trenera, role: "trainer" },
-                JWT_SECRET, // Osiguraj da je JWT_SECRET definiran
+                JWT_SECRET, 
                 { expiresIn: '1h' }
             );
             res.status(200).send({ message: "Prijava trenera uspješna", trainer: trainerDataToSend, token: token });
@@ -344,9 +338,9 @@ app.post("/api/trainer/login", async (req, res) => {
 });
 
 
-// API ruta za dohvaćanje podataka profila pojedinog člana (ZAŠTIĆENA)
+// API ruta za dohvaćanje podataka profila pojedinog člana 
 app.get("/api/clan/:oib_clana", authenticateToken, async (req, res) => {
-    // console.log(`--- GET /api/clan/${req.params.oib_clana} pozvan ---`);
+
     const oib_clana = req.params.oib_clana;
      if (!pool) {
         console.error(`Backend GET /api/clan/${oib_clana}: Pool nije inicijaliziran.`);
@@ -367,9 +361,9 @@ app.get("/api/clan/:oib_clana", authenticateToken, async (req, res) => {
     }
 });
 
-// API ruta za ažuriranje podataka profila člana (ZAŠTIĆENA)
+// API ruta za ažuriranje podataka profila člana 
 app.put("/api/clan/:oib_clana", authenticateToken, async (req, res) => {
-    // console.log(`--- PUT /api/clan/${req.params.oib_clana} pozvan ---`);
+
     const oib_clana = req.params.oib_clana;
     const { ime_clana, prezime_clana, email_clana, tel_broj_clana, kilaza, kategorija } = req.body;
 
@@ -410,9 +404,9 @@ app.put("/api/clan/:oib_clana", authenticateToken, async (req, res) => {
     }
 });
 
-// API ruta za dohvaćanje svih članova (za pretraživanje) (ZAŠTIĆENA)
+// API ruta za dohvaćanje svih članova 
 app.get("/api/clanovi", authenticateToken, async (request, response) => {
-    // console.log('--- GET /api/clanovi pozvan ---');
+
      if (!pool) {
         console.error('Backend GET /api/clanovi: Pool nije inicijaliziran.');
         return response.status(500).send('Greška servera: Baza podataka nije dostupna.');
@@ -428,9 +422,9 @@ app.get("/api/clanovi", authenticateToken, async (request, response) => {
     }
 });
 
-// API za odabir plana i trenera za člana (ZAŠTIĆENA)
+// API za odabir plana i trenera za člana 
 app.post("/api/clanovi/odabir-plana", authenticateToken, async (req, res) => {
-    // console.log('--- POST /api/clanovi/odabir-plana pozvan ---');
+
     const { oib_clana, naziv_plana, oib_trenera } = req.body;
 
     if (req.user.role !== 'admin' && req.user.oib !== oib_clana) {
@@ -488,9 +482,9 @@ app.post("/api/clanovi/odabir-plana", authenticateToken, async (req, res) => {
     }
 });
 
-// Ruta za dohvaćanje plana i trenera za člana (ZAŠTIĆENA)
+// Ruta za dohvaćanje plana i trenera za člana 
 app.get("/api/clanovi/:oib_clana/clan-na-planu", authenticateToken, async (req, res) => {
-    // console.log(`--- GET /api/clanovi/${req.params.oib_clana}/clan-na-planu pozvan ---`);
+
     const oib_clana = req.params.oib_clana;
 
     if (!oib_clana) {
@@ -530,9 +524,9 @@ app.get("/api/clanovi/:oib_clana/clan-na-planu", authenticateToken, async (req, 
     }
 });
 
-// Spremanje unosa napretka člana (ZAŠTIĆENA)
+// Spremanje unosa napretka člana 
 app.post("/api/napredak", authenticateToken, async (req, res) => {
-    // console.log('--- POST /api/napredak pozvan ---');
+
     const { oib_clana, datum_unosa, tezina, duzina_izvedbe_plana, kategorija_clana } = req.body;
 
     if (req.user.role !== 'admin' && req.user.role !== 'trainer' && req.user.oib !== oib_clana) {
@@ -545,7 +539,7 @@ app.post("/api/napredak", authenticateToken, async (req, res) => {
 
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(datum_unosa)) {
-        return res.status(400).json({ message: 'Datum unosa mora biti u formatu YYYY-MM-DD.' }); // Ispravljen format datuma
+        return res.status(400).json({ message: 'Datum unosa mora biti u formatu YYYY-MM-DD.' }); 
     }
      if (!pool) {
         console.error('Backend POST /api/napredak: Pool nije inicijaliziran.');
@@ -568,9 +562,9 @@ app.post("/api/napredak", authenticateToken, async (req, res) => {
     }
 });
 
-// Dohvaćanje povijesti napretka za člana (ZAŠTIĆENA)
+// Dohvaćanje povijesti napretka za člana 
 app.get("/api/clanovi/:oib_clana/napredak", authenticateToken, async (req, res) => {
-    // console.log(`--- GET /api/clanovi/${req.params.oib_clana}/napredak pozvan ---`);
+
     const oib_clana = req.params.oib_clana;
 
     if (!oib_clana) {
@@ -600,9 +594,9 @@ app.get("/api/clanovi/:oib_clana/napredak", authenticateToken, async (req, res) 
 });
 
 
-// API ruta za integraciju Gemini AI chata (ZAŠTIĆENA)
+// API ruta za integraciju Gemini AI chata 
 app.post("/api/chat", authenticateToken, async (req, res) => {
-    // console.log('--- POST /api/chat pozvan ---');
+
     try {
         const { message } = req.body;
 
@@ -611,18 +605,18 @@ app.post("/api/chat", authenticateToken, async (req, res) => {
         }
 
         if (process.env.NODE_ENV === 'test') {
-            // console.log('--- POST /api/chat: Testno okruženje, vraćam mockirani odgovor. ---');
+
             await new Promise((resolve) => setTimeout(resolve, 100));
             return res.json({ role: 'model', content: `Testni odgovor na: ${message}` });
         }
 
-        // console.log('--- POST /api/chat: Produkcijsko/razvojno okruženje, kontaktiram Gemini AI. ---');
-        const genAI = new GoogleGenerativeAI(process.env.API_KEY); // Osiguraj da je API_KEY definiran
+
+        const genAI = new GoogleGenerativeAI(process.env.API_KEY); 
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
         const chat = model.startChat({
             history: [],
-            generationConfig: { maxOutputTokens: 500 },
+            generationConfig: { maxOutputTokens: 1500 },
         });
 
         const result = await chat.sendMessage(message);
@@ -639,9 +633,9 @@ app.post("/api/chat", authenticateToken, async (req, res) => {
     }
 });
 
-// API ruta za dodavanje novih trenera (ZAŠTIĆENA, SAMO ZA ADMINA)
+// API ruta za dodavanje novih trenera 
 app.post('/api/trainers', authenticateToken, authorizeRole(['admin']), async (req, res) => {
-    // console.log('--- POST /api/trainers pozvan ---');
+
     const { ime_trenera, prezime_trenera, oib_trenera, email_trenera, tel_broj_trenera, specialnost, lozinka_trenera } = req.body;
 
     if (!ime_trenera || !prezime_trenera || !oib_trenera || !email_trenera || !tel_broj_trenera || !specialnost || !lozinka_trenera) {
@@ -658,7 +652,7 @@ app.post('/api/trainers', authenticateToken, authorizeRole(['admin']), async (re
         const query = `INSERT INTO Trener (oib_trenera, ime_trenera, prezime_trenera, strucnost, email_trenera, tel_broj_trenera, lozinka_trenera)
                        VALUES (?, ?, ?, ?, ?, ?, ?)`;
 
-        /* const [result] = */ await pool.query(query, [oib_trenera, ime_trenera, prezime_trenera, specialnost, email_trenera, tel_broj_trenera, hashiranaLozinka]);
+         await pool.query(query, [oib_trenera, ime_trenera, prezime_trenera, specialnost, email_trenera, tel_broj_trenera, hashiranaLozinka]);
         res.status(200).json({ message: 'Trener uspješno dodan!', oib_trenera: oib_trenera });
     } catch (err) {
         console.error('Backend POST /api/trainers: Greška pri unosu trenera:', err.message);
@@ -670,24 +664,24 @@ app.post('/api/trainers', authenticateToken, authorizeRole(['admin']), async (re
 });
 console.log('--- Sve API rute definirane. ---');
 
-// Function to set a mock pool for testing
+
 function setPool(mockPool) {
-    // console.log('--- Pozvana funkcija setPool (za testiranje) ---');
+
     pool = mockPool;
 }
 
-// Helper function to hash a password
+
 async function hashPassword(password) {
     const saltRounds = 10;
     return await bcrypt.hash(password, saltRounds);
 }
 
-// Helper function to compare passwords
+
 async function comparePassword(password, hashedPassword) {
     return await bcrypt.compare(password, hashedPassword);
 }
 console.log('--- Pomoćne funkcije (setPool, hashPassword, comparePassword) definirane. ---');
 
-// Export the functions
+
 module.exports = { app, connectToDatabase, getPool: () => pool, setPool, hashPassword, comparePassword, JWT_SECRET };
 console.log('--- Završavam indeks.js i izvozim module. ---');

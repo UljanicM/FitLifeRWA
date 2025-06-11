@@ -17,11 +17,7 @@ describe('Korisnički Tok - Registracija, Prijava, Uređivanje Profila, Odjava',
   const ocekivanaKilazaFormatirano = "75.00"; // Vrijednost koju očekujemo u inputu i vjerojatno u storageu
 
   before(() => {
-    // Osiguraj da je backend pokrenut i dostupan
-    // Ovdje možeš dodati i čišćenje baze podataka ako imaš takvu skriptu/API endpoint
-    // cy.request('POST', 'http://localhost:3000/api/test/reset-database'); // Primjer
-    // Postavljanje baseUrl-a se radi u cypress.config.js, Cypress će ga koristiti
-    // cy.visit('/'); // Možeš posjetiti baznu stranicu jednom da osiguraš da je sve spremno
+
   });
 
   it('Treba uspješno provesti korisnika kroz registraciju, prijavu, uređivanje profila i odjavu', () => {
