@@ -4,7 +4,10 @@ import { LocalStorage } from 'quasar';
 
 console.log('--- src/boot/axios.js: File loaded ---'); 
 
-const api = axios.create({ baseURL: 'http://localhost:3000/api' });
+// --- KLJUČNA PROMJENA OVDJE ---
+// Koristi import.meta.env.VITE_APP_API_URL za pristup varijabli okoline
+// VITE_APP_API_URL će biti postavljen u .env.production i na Netlify dashboardu
+const api = axios.create({ baseURL: import.meta.env.VITE_APP_API_URL });
 console.log('--- src/boot/axios.js: Axios API instance created ---'); 
 
 export default boot(({ app, router }) => {
@@ -45,9 +48,8 @@ export default boot(({ app, router }) => {
 
         window.dispatchEvent(new Event('auth-change'));
 
-        // PROMJENA OVDJE: Koristi 'loginpage' umjesto 'login'
         if (router.currentRoute.value.name !== 'loginpage') { 
-          router.push({ name: 'loginpage' }); // PROMJENA
+          router.push({ name: 'loginpage' });
           import('quasar').then(({ useQuasar }) => {
             const $q = useQuasar();
             $q.notify({
